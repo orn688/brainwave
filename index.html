@@ -125,6 +125,11 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
 .winner { text-align: center; }
 .winner .big { font-family: var(--font-display); font-weight: 800; font-size: clamp(2rem, 9vw, 3rem); line-height: 1.05; text-wrap: balance; }
 details summary { cursor: pointer; font-weight: 700; }
+.row.split { justify-content: space-between; align-items: flex-start; }
+.clue-entry { flex: 1 1 220px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.clue-entry summary { list-style: none; font-weight: 400; font-size: .9rem; color: var(--muted); text-decoration: underline; padding-block: 12px; width: max-content; }
+.clue-entry summary::-webkit-details-marker { display: none; }
+.clue-entry[open] summary { padding-block: 0; }
 ol.rules { margin: 8px 0 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 6px; color: var(--muted); max-width: 65ch; }
 ol.rules b { color: var(--ink); }
 .seg.four { grid-template-columns: repeat(4, 1fr); }
@@ -426,13 +431,19 @@ function render() {
             <button id="peek">Peek at target</button>
             <button class="ghost" id="skip">Draw a different card</button>
           </div>
-          <label>Clue (optional, so everyone can see it)<input type="text" id="clue" maxlength="60" value="${esc(S.clue)}" placeholder="Say it out loud or type it here"></label>
-          <div class="row end"><button id="toGuess">Clue given, start guessing</button></div>`}
+          <div class="row split">
+            <details class="clue-entry" id="clueEntry" ${S.clue ? "open" : ""}>
+              <summary>Playing remotely? Type the clue</summary>
+              <input type="text" id="clue" maxlength="60" value="${esc(S.clue)}" placeholder="Shown to everyone while guessing" aria-label="Clue">
+            </details>
+            <button id="toGuess">Clue given, start guessing</button>
+          </div>`}
       </section>`;
     if (S.peek) { $("#hide").onclick = () => { S.peek = false; render(); }; return; }
     $("#peek").onclick = () => { S.peek = true; render(); };
     $("#skip").onclick = () => { drawCard(); newTarget(); render(); };
     $("#clue").oninput = e => { S.clue = e.target.value; save(); };
+    $("#clueEntry").ontoggle = e => { if (e.target.open) $("#clue").focus(); };
     $("#toGuess").onclick = () => { S.phase = "guess"; S.guess = 90; render(); };
     return;
   }
