@@ -127,6 +127,9 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
 details summary { cursor: pointer; font-weight: 700; }
 ol.rules { margin: 8px 0 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 6px; color: var(--muted); max-width: 65ch; }
 ol.rules b { color: var(--ink); }
+.seg.four { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 520px) { .seg.four { grid-template-columns: 1fr 1fr; } }
+.field-label { font-weight: 700; font-size: .9rem; }
 .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 4px; background: var(--bg); border: 1px solid var(--line); border-radius: 14px; }
 .seg button { background: transparent; border: none; color: var(--ink); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; align-items: flex-start; text-align: left; line-height: 1.2; }
 .seg button span { font-weight: 400; font-size: .82rem; color: var(--muted); }
@@ -198,10 +201,16 @@ const CARDS = [
 ];
 
 // ---------- Scoring geometry (degrees, 0 = far left, 180 = far right) ----------
-const BAND = 7.5;           // width of each scoring band
-const MARGIN = BAND * 1.5;  // keep the 4-point band fully on the dial
+// Difficulty sets the width of each scoring band. The whole 2-3-4-3-2 zone is 5 bands wide.
+const DIFFICULTIES = {
+  easy:   { label: "Easy",   band: 10,  note: "Wide target" },
+  normal: { label: "Normal", band: 7.5, note: "Classic size" },
+  hard:   { label: "Hard",   band: 5.5, note: "Narrow target" },
+  expert: { label: "Expert", band: 4,   note: "Razor thin" }
+};
+const bandWidth = () => (DIFFICULTIES[S.difficulty] || DIFFICULTIES.normal).band;
 function scoreFor(target, guess) {
-  const d = Math.abs(target - guess);
+  const d = Math.abs(target - guess), BAND = bandWidth();
   if (d <= BAND / 2) return 4;
   if (d <= BAND * 1.5) return 3;
   if (d <= BAND * 2.5) return 2;
@@ -212,7 +221,7 @@ function scoreFor(target, guess) {
 const STORE_KEY = "wavelength-game-v1";
 const fresh = () => ({
   phase: "setup", mode: "teams", teams: ["Team Sky", "Team Ember"], players: ["Player 1", "Player 2"],
-  scores: [0, 0], goal: 10, coopLen: 7, cardsLeft: 7, total: 0,
+  scores: [0, 0], goal: 10, coopLen: 7, cardsLeft: 7, total: 0, difficulty: "normal",
   active: 0, deck: [], card: null, target: 90, guess: 90, clue: "", lr: null,
   peek: false, last: null, extraTurn: false, custom: "", round: 0
 });
@@ -232,7 +241,8 @@ function drawCard() {
   const pool = allCards();
   S.card = pool[S.deck.pop()] || pool[0];
 }
-function newTarget() { S.target = MARGIN + Math.random() * (180 - 2 * MARGIN); }
+// Keep the 4-point band fully on the dial.
+function newTarget() { const m = bandWidth() * 1.5; S.target = m + Math.random() * (180 - 2 * m); }
 
 // ---------- Rendering helpers ----------
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -246,7 +256,7 @@ function wedge(a0, a1, r) {
   return `M${CX},${CY} L${x0.toFixed(2)},${y0.toFixed(2)} A${r},${r} 0 0 1 ${x1.toFixed(2)},${y1.toFixed(2)} Z`;
 }
 function dialSVG({ screenOpen, showNeedle, draggable }) {
-  const t = S.target, b = BAND;
+  const t = S.target, b = bandWidth();
   const bands = [
     [t - 2.5 * b, t - 1.5 * b, "--band2", "2"], [t - 1.5 * b, t - 0.5 * b, "--band3", "3"],
     [t - 0.5 * b, t + 0.5 * b, "--band4", "4"], [t + 0.5 * b, t + 1.5 * b, "--band3", "3"],
@@ -259,7 +269,7 @@ function dialSVG({ screenOpen, showNeedle, draggable }) {
   }
   const labels = bands.map(([a0, a1, , n]) => {
     const [x, y] = pt((a0 + a1) / 2, R - 22);
-    return `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="middle" font-family="var(--font-mono)" font-size="15" fill="#fff" font-weight="500">${n}</text>`;
+    return `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="middle" font-family="var(--font-mono)" font-size="${Math.min(15, b * 2.4).toFixed(1)}" fill="#fff" font-weight="500">${n}</text>`;
   }).join("");
   const [nx, ny] = pt(S.guess, R - 6);
   return `
@@ -317,7 +327,7 @@ const other = i => 1 - i;
 function render() {
   save();
   const app = $("#app");
-  $("#deckInfo").textContent = S.phase === "setup" ? `${allCards().length} cards` : (S.mode === "coop" ? `Card ${S.round} · 2 players` : `Round ${S.round} · ${S.deck.length} cards left`);
+  $("#deckInfo").textContent = S.phase === "setup" ? `${allCards().length} cards` : (S.mode === "coop" ? `Card ${S.round} · 2 players` : `Round ${S.round} · ${S.deck.length} cards left`) + ` · ${(DIFFICULTIES[S.difficulty] || DIFFICULTIES.normal).label}`;
   const team = esc(names()[S.active]), opp = esc(names()[other(S.active)]);
   const coop = S.mode === "coop";
 
@@ -336,6 +346,10 @@ function render() {
         ${coop
           ? `<label style="max-width:160px">Cards to play<input type="number" id="goal" min="3" max="20" value="${S.coopLen}"></label>`
           : `<label style="max-width:160px">Points to win<input type="number" id="goal" min="3" max="30" value="${S.goal}"></label>`}
+        <div class="field-label" id="diffLabel">Difficulty</div>
+        <div class="seg four" role="group" aria-labelledby="diffLabel">
+          ${Object.entries(DIFFICULTIES).map(([k, d]) => `<button id="diff-${k}" data-diff="${k}" aria-pressed="${S.difficulty === k}">${d.label}<span>${d.note}</span></button>`).join("")}
+        </div>
         <details>
           <summary>Add your own cards</summary>
           <p class="hint">One card per line, with the two ends separated by a bar. They are shuffled in with the ${CARDS.length} built-in cards.</p>
@@ -369,6 +383,7 @@ function render() {
       else { S.teams = [n[0] || "Team Sky", n[1] || "Team Ember"]; S.goal = Math.max(3, Math.min(30, g || 10)); }
       S.custom = $("#custom").value;
     };
+    app.querySelectorAll("[data-diff]").forEach(b => b.onclick = () => { readSetup(); S.difficulty = b.dataset.diff; render(); });
     $("#modeTeams").onclick = () => { readSetup(); S.mode = "teams"; render(); };
     $("#modeCoop").onclick = () => { readSetup(); S.mode = "coop"; render(); };
     $("#start").onclick = () => { readSetup(); S.deck = []; newGame(Math.random() < 0.5 ? 0 : 1); };
@@ -577,7 +592,7 @@ function bindDial() {
   btn.className = "link"; btn.textContent = "New game"; btn.id = "reset";
   btn.onclick = () => {
     if (S.phase === "setup") return;
-    if (btn.dataset.armed) { const keep = { mode: S.mode, teams: S.teams, players: S.players, goal: S.goal, coopLen: S.coopLen, custom: S.custom }; S = Object.assign(fresh(), keep); delete btn.dataset.armed; btn.textContent = "New game"; render(); return; }
+    if (btn.dataset.armed) { const keep = { mode: S.mode, teams: S.teams, players: S.players, goal: S.goal, coopLen: S.coopLen, difficulty: S.difficulty, custom: S.custom }; S = Object.assign(fresh(), keep); delete btn.dataset.armed; btn.textContent = "New game"; render(); return; }
     btn.dataset.armed = "1"; btn.textContent = "Tap again to quit this game";
     setTimeout(() => { delete btn.dataset.armed; btn.textContent = "New game"; }, 3000);
   };
