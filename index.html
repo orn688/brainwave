@@ -46,6 +46,7 @@
   --left: #6aaeea; --right: #ef7aa6; --good: #4cc48a; color-scheme: dark;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { min-height: 100%; }
 body {
   margin: 0; background: var(--bg); color: var(--ink);
@@ -129,6 +130,8 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
 .winner { text-align: center; }
 .winner .big { font-family: var(--font-display); font-weight: 800; font-size: clamp(2rem, 9vw, 3rem); line-height: 1.05; text-wrap: balance; }
 details summary { cursor: pointer; font-weight: 700; }
+.peek-hint { text-align: center; min-height: 3em; margin: 0; }
+.peek-btn { min-width: 11em; }
 .row.split { justify-content: space-between; align-items: flex-start; }
 .clue-entry { flex: 1 1 220px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .clue-entry summary { list-style: none; font-weight: 400; font-size: .9rem; color: var(--muted); text-decoration: underline; padding-block: 12px; width: max-content; }
@@ -265,6 +268,7 @@ let S = fresh();
 try { const saved = JSON.parse(localStorage.getItem(STORE_KEY)); if (saved && saved.phase) S = Object.assign(fresh(), saved); } catch (e) {}
 if (window.claude?.hot?.data?.S) S = window.claude.hot.data.S;
 if (!DIFFICULTIES[S.difficulty]) S.difficulty = "normal";
+if (S.phase === "psychic") S.phase = "clue"; // saved before the role was renamed
 window.claude?.hot?.snapshot?.(() => ({ S }));
 function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch (e) {} }
 
@@ -400,15 +404,15 @@ function render() {
         <details open>
           <summary>How to play</summary>
           ${coop ? `<ol class="rules">
-            <li>You play on the same side. Take turns being the <b>Psychic</b>.</li>
-            <li>The Psychic peeks at the hidden target while the other player looks away, then gives a <b>clue</b> that sits at that spot between the two ends of the card.</li>
-            <li>The other player drags the <b>needle</b> to where they think the target is.</li>
+            <li>You play on the same side. Take turns being the <b>Cluegiver</b> and the <b>Guesser</b>.</li>
+            <li>The Cluegiver peeks at the hidden target while the Guesser looks away, then gives a <b>clue</b> that sits at that spot between the two ends of the card.</li>
+            <li>The Guesser drags the <b>needle</b> to where they think the target is.</li>
             <li>Reveal and score 2, 3 or 4 by band. A bullseye earns you a <b>bonus card</b>.</li>
             <li>When the cards run out, add up your score and see how in sync you are.</li>
           </ol>` : `<ol class="rules">
-            <li>Each round, one player on the active team is the <b>Psychic</b>. Everyone else looks away while the Psychic peeks at the hidden target.</li>
-            <li>The Psychic gives a <b>clue</b> that sits at that spot between the two ends of the card. For "Cold ↔ Hot", a clue near the right might be "Lava".</li>
-            <li>Their team talks it over and drags the <b>needle</b> to where they think the target is.</li>
+            <li>Each round, one player on the active team is the <b>Cluegiver</b>. Everyone else looks away while the Cluegiver peeks at the hidden target.</li>
+            <li>The Cluegiver gives a <b>clue</b> that sits at that spot between the two ends of the card. For "Cold ↔ Hot", a clue near the right might be "Lava".</li>
+            <li>The rest of their team are the <b>Guessers</b>. They talk it over and drag the <b>needle</b> to where they think the target is.</li>
             <li>The other team calls whether the target is to the <b>left or right</b> of the needle.</li>
             <li>Reveal. The guessing team scores 2, 3 or 4 by band. If they missed the bullseye and the other team called the side right, that team scores 1.</li>
             <li>A team that hits the 4 while still behind gets another turn. First team to the goal wins.</li>
@@ -429,36 +433,40 @@ function render() {
     return;
   }
 
-  if (S.phase === "psychic") {
+  if (S.phase === "clue") {
+    const lookAway = coop ? `Pass the device to ${team}. ${opp}, look away.` : `Pass the device to ${team}'s Cluegiver. Everyone else, look away.`;
+    const peeking = "Cluegiver only. Remember the target, then hide it.";
     app.innerHTML = `
       ${scoresHTML()}
       <section class="panel">
-        <div class="eyebrow">${coop ? team + " is the Psychic" + (S.extraTurn ? " · bonus card" : "") : team + " · Psychic's turn" + (S.extraTurn ? " · bonus turn" : "")}</div>
+        <div class="eyebrow">${coop ? team + " gives the clue" + (S.extraTurn ? " · bonus card" : "") : team + " · Cluegiver's turn" + (S.extraTurn ? " · bonus turn" : "")}</div>
         ${cardHTML()}
         <div class="dialbox">${dialSVG({ screenOpen: S.peek, showNeedle: false })}</div>
-        ${S.peek ? `
-          <p class="hint" style="text-align:center">Psychic only. Memorize the target, then close the screen.</p>
-          <div class="row" style="justify-content:center"><button id="hide">Close the screen</button></div>`
-        : `
-          <p class="hint" style="text-align:center">${coop ? `Pass the device to ${team}. ${opp}, look away.` : `Pass the device to ${team}'s Psychic. Everyone else, look away.`}</p>
-          <div class="row" style="justify-content:center">
-            <button id="peek">Peek at target</button>
-            <button class="ghost" id="skip">Draw a different card</button>
-          </div>
-          <div class="row split">
-            <details class="clue-entry" id="clueEntry" ${S.clue ? "open" : ""}>
-              <summary>Playing remotely? Type the clue</summary>
-              <input type="text" id="clue" maxlength="60" value="${esc(S.clue)}" placeholder="Shown to everyone while guessing" aria-label="Clue">
-            </details>
-            <button id="toGuess">Clue given, start guessing</button>
-          </div>`}
+        <p class="hint peek-hint" id="peekHint">${S.peek ? peeking : lookAway}</p>
+        <div class="row" style="justify-content:center">
+          <button id="peek" class="peek-btn" aria-pressed="${S.peek}">${S.peek ? "Hide target" : "Peek at target"}</button>
+          <button class="ghost" id="skip">Draw a different card</button>
+        </div>
+        <div class="row split">
+          <details class="clue-entry" id="clueEntry" ${S.clue ? "open" : ""}>
+            <summary>Playing remotely? Type the clue</summary>
+            <input type="text" id="clue" maxlength="60" value="${esc(S.clue)}" placeholder="Shown to everyone while guessing" aria-label="Clue">
+          </details>
+          <button id="toGuess">Clue given, start guessing</button>
+        </div>
       </section>`;
-    if (S.peek) { $("#hide").onclick = () => { S.peek = false; render(); }; return; }
-    $("#peek").onclick = () => { S.peek = true; render(); };
+    // Peeking only swings the cover and swaps two labels; nothing else on screen changes.
+    $("#peek").onclick = () => {
+      S.peek = !S.peek; save();
+      $(".dialbox .screen").classList.toggle("open", S.peek);
+      $("#peek").textContent = S.peek ? "Hide target" : "Peek at target";
+      $("#peek").setAttribute("aria-pressed", S.peek);
+      $("#peekHint").textContent = S.peek ? peeking : lookAway;
+    };
     $("#skip").onclick = () => { drawCard(); newTarget(); render(); };
     $("#clue").oninput = e => { S.clue = e.target.value; save(); };
     $("#clueEntry").ontoggle = e => { if (e.target.open) $("#clue").focus(); };
-    $("#toGuess").onclick = () => { S.phase = "guess"; S.guess = 90; render(); };
+    $("#toGuess").onclick = () => { S.peek = false; S.phase = "guess"; S.guess = 90; render(); };
     return;
   }
 
@@ -466,7 +474,7 @@ function render() {
     app.innerHTML = `
       ${scoresHTML()}
       <section class="panel">
-        <div class="eyebrow">${coop ? opp : team} · Move the needle</div>
+        <div class="eyebrow">${coop ? opp : team} · Guessing</div>
         ${cardHTML()}
         ${S.clue ? `<div class="clue"><small>Clue</small>${esc(S.clue)}</div>` : ""}
         <div class="dialbox">${dialSVG({ screenOpen: false, showNeedle: true, draggable: true })}</div>
@@ -585,7 +593,7 @@ function revealCoop() {
 
 function startRound(extra = false) {
   S.round++; S.clue = ""; S.peek = false; S.lr = null; S.extraTurn = extra;
-  drawCard(); newTarget(); S.guess = 90; S.phase = "psychic"; render();
+  drawCard(); newTarget(); S.guess = 90; S.phase = "clue"; render();
 }
 
 function reveal(side) {
