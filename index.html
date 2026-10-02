@@ -148,69 +148,88 @@ ol.rules b { color: var(--ink); }
 </div>
 
 <script>
-// ---------- Cards: [left, right] ----------
-const CARDS = [
-  ["Cold","Hot"],["Useless","Useful"],["Underrated","Overrated"],["Bad movie","Good movie"],
-  ["Easy to spell","Hard to spell"],["Scary animal","Cuddly animal"],["Unhealthy food","Healthy food"],
-  ["Boring hobby","Exciting hobby"],["Cheap","Expensive"],["Normal pet","Weird pet"],
-  ["Dry food","Wet food"],["Rough","Smooth"],["Quiet","Loud"],["Ugly word","Beautiful word"],
-  ["Forgettable","Unforgettable"],["Fantasy","Sci-fi"],["Casual","Formal"],["Smells bad","Smells good"],
-  ["Sad song","Happy song"],["Villain","Hero"],["Mild","Spicy"],["Low effort","High effort"],
-  ["Rare","Common"],["Old-fashioned","Futuristic"],["Unpopular opinion","Popular opinion"],
-  ["Bad habit","Good habit"],["Hard to pronounce","Easy to pronounce"],["Ordinary","Extraordinary"],
-  ["Flimsy","Sturdy"],["Tastes bad","Tastes good"],["Underpaid","Overpaid"],["Small talk","Deep conversation"],
-  ["Indoor activity","Outdoor activity"],["Sweet","Savory"],["Soft","Hard"],["Safe","Dangerous"],
-  ["Short-lived","Long-lived"],["Calm","Chaotic"],["Mainstream","Niche"],["Easy job","Hard job"],
-  ["Breakfast food","Dinner food"],["Underdressed","Overdressed"],["Funny","Serious"],
-  ["Lowbrow","Highbrow"],["Analog","Digital"],["Introvert","Extrovert"],["Snack","Meal"],
-  ["Tiny","Huge"],["Fragile","Indestructible"],["Ethical","Unethical"],["Childish","Mature"],
-  ["Square","Round"],["Light","Heavy"],["Sport","Game"],["Useless superpower","Amazing superpower"],
-  ["Worst day of the week","Best day of the week"],["Bad pizza topping","Good pizza topping"],
-  ["Overrated city","Underrated city"],["Normal thing to own","Weird thing to own"],
-  ["Needs no talent","Needs a lot of talent"],["Bad gift","Great gift"],["Feels bad","Feels good"],
-  ["Easy to kill","Hard to kill"],["Rural","Urban"],["Cheap date","Fancy date"],
-  ["Science","Art"],["Unknown","Famous"],["Messy food","Clean food"],["Liquid","Solid"],
-  ["Dog person thing","Cat person thing"],["Ancient","Modern"],["Plain","Fancy"],["Slow","Fast"],
-  ["Comedy","Tragedy"],["Bad advice","Good advice"],["Weak","Strong"],["Nature","Technology"],
-  ["Bad smell","Good smell"],["Inexplicable","Easy to explain"],["Normal","Cursed"],
-  ["Thing you hide","Thing you show off"],["Guilty pleasure","Openly loved"],["Temporary","Permanent"],
-  ["Peaceful","Violent"],["Uncool","Cool"],["Unnecessary","Essential"],["Worst Olympic sport","Best Olympic sport"],
-  ["Hard to sit on","Comfy to sit on"],["Unreliable","Reliable"],["Mean","Nice"],
-  ["Bad name for a pet","Good name for a pet"],["Beginner skill","Expert skill"],["Unsexy","Sexy"],
-  ["Fad","Classic"],["Optimistic","Pessimistic"],["Throwaway","Heirloom"],["Basic","Hipster"],
-  ["Underground","Sky-high"],["Sounds fake","Sounds real"],["Smart","Dumb"],["Bad TV show","Good TV show"],
-  ["Poorly made","Well made"],["Easy to find","Hard to find"],["Harmless","Harmful"],
+// ---------- Cards: [left, right], grouped by difficulty ----------
+// Easy: concrete scales with obvious clues. Normal: matters of taste and opinion.
+// Hard: abstract or value-laden scales that spark debate.
+const CARD_SETS = {
+  easy: [
+  ["Cold","Hot"],["Cheap","Expensive"],["Tiny","Huge"],["Quiet","Loud"],["Slow","Fast"],
+  ["Light","Heavy"],["Soft","Hard"],["Rough","Smooth"],["Dry food","Wet food"],["Mild","Spicy"],
+  ["Sweet","Savory"],["Safe","Dangerous"],["Square","Round"],["Liquid","Solid"],["Dirty","Clean"],
+  ["Rare","Common"],["Short-lived","Long-lived"],["Indoor activity","Outdoor activity"],["Rural","Urban"],
+  ["Analog","Digital"],["Snack","Meal"],["Breakfast food","Dinner food"],["Casual","Formal"],
+  ["Painless","Painful"],["Fragile","Indestructible"],["For kids","For adults"],["Unknown","Famous"],
+  ["Easy instrument","Hard instrument"],["Easy to spell","Hard to spell"],["Temporary","Permanent"],
+  ["Scary animal","Cuddly animal"],["Fantasy","Sci-fi"],["Better hot","Better cold"],
+  ["Best eaten raw","Best eaten cooked"],["Old-fashioned","Futuristic"],["Hard to sit on","Comfy to sit on"],
+  ["Tastes bad","Tastes good"],["Smells bad","Smells good"],["Unhealthy food","Healthy food"],
+  ["Useless","Useful"],["Easy job","Hard job"],["Easy to draw","Hard to draw"],["Messy food","Clean food"],
+  ["Weak","Strong"],["Thing you buy once","Thing you buy all the time"],["Villain","Hero"],
+  ["Dull","Sharp"],["Dark","Bright"],["Chill","Intense"],["Simple","Complicated"],["Calm","Chaotic"],
+  ["Cheap hobby","Expensive hobby"],["Quick to make","Takes all day to make"],["Cheap date","Fancy date"],
+  ["Easy to carry","Impossible to carry"],["Lives on land","Lives in water"],["Shy","Bold"],
+  ["Peaceful","Violent"],["Lazy","Hardworking"],["Mean","Nice"],["Poorly made","Well made"]
+  ],
+  normal: [
+  ["Underrated","Overrated"],["Bad movie","Good movie"],["Bad TV show","Good TV show"],
+  ["Boring hobby","Exciting hobby"],["Normal pet","Weird pet"],["Ugly word","Beautiful word"],
+  ["Forgettable","Unforgettable"],["Sad song","Happy song"],["Bad habit","Good habit"],["Sport","Game"],
+  ["Useless superpower","Amazing superpower"],["Bad pizza topping","Good pizza topping"],
+  ["Underrated city","Overrated city"],["Needs no talent","Needs a lot of talent"],["Bad gift","Great gift"],
+  ["Science","Art"],["Cat energy","Dog energy"],["Mainstream","Niche"],["Bad advice","Good advice"],
+  ["Normal","Cursed"],["Uncool","Cool"],["Worst Olympic sport","Best Olympic sport"],
+  ["Bad name for a pet","Good name for a pet"],["Unsexy","Sexy"],["Fad","Classic"],["Basic","Hipster"],
   ["Worst era to live in","Best era to live in"],["Normal sandwich","Weird sandwich"],
-  ["Short","Long"],["Boring city","Exciting city"],["Low quality","High quality"],["Dirty","Clean"],
-  ["Vice","Virtue"],["Better hot","Better cold"],["Unattractive","Attractive"],["Shy","Bold"],
-  ["Painless","Painful"],["Bad superhero","Good superhero"],["Bad board game","Good board game"],
-  ["Easy to remember","Hard to remember"],["Relaxing","Stressful"],["Sad","Happy"],
-  ["Minor inconvenience","Major disaster"],["Stays the same","Always changing"],
-  ["Thing you buy once","Thing you buy all the time"],["Worst fast food","Best fast food"],
-  ["For kids","For adults"],["Dull","Sharp"],["Bad first date idea","Good first date idea"],
-  ["Underground band","Stadium band"],["Bad fashion","Good fashion"],["Weird word","Normal word"],
-  ["Low-tech","High-tech"],["Best eaten raw","Best eaten cooked"],["Waste of money","Worth every penny"],
-  ["Trashy","Classy"],["Normal job","Weird job"],["Introverted animal","Extroverted animal"],
-  ["Easy instrument","Hard instrument"],["Boring sport to watch","Exciting sport to watch"],
-  ["Mildly annoying","Infuriating"],["Unlikely","Likely"],["Smells like childhood","Smells like adulthood"],
-  ["Bad breakfast","Good breakfast"],["Least important invention","Most important invention"],
-  ["Round animal","Pointy animal"],["Normal holiday","Weird holiday"],["Unscientific","Scientific"],
-  ["Small problem","Big problem"],["Easy to draw","Hard to draw"],["Bad candy","Good candy"],
-  ["Lazy","Hardworking"],["Better as a book","Better as a movie"],["Gets better with age","Gets worse with age"],
-  ["Needs a remake","Untouchable classic"],["Cozy","Uncomfortable"],["Party","Funeral"]
-];
+  ["Bad superhero","Good superhero"],["Bad board game","Good board game"],["Relaxing","Stressful"],
+  ["Minor inconvenience","Major disaster"],["Bad first date idea","Good first date idea"],
+  ["Underground band","Stadium band"],["Waste of money","Worth every penny"],["Normal job","Weird job"],
+  ["Introverted animal","Extroverted animal"],["Mildly annoying","Infuriating"],
+  ["Least important invention","Most important invention"],["Round animal","Pointy animal"],
+  ["Bad candy","Good candy"],["Better as a book","Better as a movie"],["Ages like milk","Ages like wine"],
+  ["Needs a remake","Untouchable classic"],["Underdressed","Overdressed"],["Easy to kill","Hard to kill"],
+  ["Underpaid","Overpaid"],["Bad tattoo idea","Good tattoo idea"],["Terrible band name","Great band name"],
+  ["Bad place to nap","Great place to nap"],["Bad karaoke song","Great karaoke song"],
+  ["Useless kitchen gadget","Essential kitchen gadget"],["Bad roommate habit","Good roommate habit"],
+  ["Useless in a zombie apocalypse","Essential in a zombie apocalypse"],["Annoying sound","Satisfying sound"],
+  ["Bad Halloween costume","Great Halloween costume"],["Morning person thing","Night owl thing"],
+  ["Wholesome","Unhinged"],["Uses your brain","Uses your body"],["Introvert","Extrovert"],
+  ["Tastes like childhood","Tastes grown-up"],["Fun to say","Unpleasant to say"],["Red flag","Green flag"],
+  ["Smart","Dumb"],["Unreliable","Reliable"]
+  ],
+  hard: [
+  ["Vice","Virtue"],["Unethical","Ethical"],["Lowbrow","Highbrow"],["Comedy","Tragedy"],
+  ["Optimistic","Pessimistic"],["Guilty pleasure","Openly loved"],["Thing you hide","Thing you show off"],
+  ["Throwaway","Heirloom"],["Small talk","Deep conversation"],["Nature","Technology"],
+  ["Sounds made up","Sounds true"],["Easy to explain","Hard to explain"],["Should be banned","Should be mandatory"],
+  ["Not art","Art"],["Feels like a Monday","Feels like a Friday"],["Bad for society","Good for society"],
+  ["Impulsive","Calculated"],["Soothing","Unsettling"],["Old money","New money"],["Corporate","Punk"],
+  ["Underrated skill","Overrated skill"],["Mostly myth","Mostly true"],["Worthless","Priceless"],
+  ["Background character","Main character"],["Historically irrelevant","Historically important"],
+  ["Feels childish","Feels grown-up"],["Fair","Unfair"],["Harmless lie","Unforgivable lie"],
+  ["Selfish","Selfless"],["Requires luck","Requires skill"],["Loved by critics","Loved by audiences"],
+  ["Your problem","Society's problem"],["Mundane","Magical"],["Pretentious","Down to earth"],
+  ["Ironic enjoyment","Sincere enjoyment"],["Easy to forgive","Hard to forgive"],
+  ["Universal experience","Niche experience"],["Useless knowledge","Life-saving knowledge"],
+  ["Underrated virtue","Overrated virtue"],
+  ["Brave","Reckless"],["Good intentions","Good results"],
+  ["Overthought","Underthought"],["Trendy","Timeless"],["Cringe","Iconic"],["Effortless","Try-hard"],
+  ["Exclusive","Accessible"],["Masterpiece","Mess"],["Ahead of its time","Behind the times"],
+  ["Would brag about","Would never admit"],["Healthy obsession","Unhealthy obsession"],
+  ["Nobody needs it","Everybody needs it"]
+  ]
+};
 
 // ---------- Scoring geometry (degrees, 0 = far left, 180 = far right) ----------
-// Difficulty sets the width of each scoring band. The whole 2-3-4-3-2 zone is 5 bands wide.
+const BAND = 7.5; // width of each scoring band; the whole 2-3-4-3-2 zone is 5 bands wide
 const DIFFICULTIES = {
-  easy:   { label: "Easy",   band: 10,  note: "Wide target" },
-  normal: { label: "Normal", band: 7.5, note: "Classic size" },
-  hard:   { label: "Hard",   band: 5.5, note: "Narrow target" },
-  expert: { label: "Expert", band: 4,   note: "Razor thin" }
+  easy:   { label: "Easy",   note: "Concrete scales",   sets: ["easy"] },
+  normal: { label: "Normal", note: "Taste and opinion", sets: ["normal"] },
+  hard:   { label: "Hard",   note: "Abstract, debatable", sets: ["hard"] },
+  mixed:  { label: "Mixed",  note: "Every card",        sets: ["easy", "normal", "hard"] }
 };
-const bandWidth = () => (DIFFICULTIES[S.difficulty] || DIFFICULTIES.normal).band;
+const difficulty = () => DIFFICULTIES[S.difficulty] || DIFFICULTIES.normal;
 function scoreFor(target, guess) {
-  const d = Math.abs(target - guess), BAND = bandWidth();
+  const d = Math.abs(target - guess);
   if (d <= BAND / 2) return 4;
   if (d <= BAND * 1.5) return 3;
   if (d <= BAND * 2.5) return 2;
@@ -228,6 +247,7 @@ const fresh = () => ({
 let S = fresh();
 try { const saved = JSON.parse(localStorage.getItem(STORE_KEY)); if (saved && saved.phase) S = Object.assign(fresh(), saved); } catch (e) {}
 if (window.claude?.hot?.data?.S) S = window.claude.hot.data.S;
+if (!DIFFICULTIES[S.difficulty]) S.difficulty = "normal";
 window.claude?.hot?.snapshot?.(() => ({ S }));
 function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch (e) {} }
 
@@ -235,14 +255,14 @@ function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.fl
 function parseCustom(text) {
   return text.split("\n").map(l => l.split("|").map(s => s.trim())).filter(p => p.length === 2 && p[0] && p[1]);
 }
-function allCards() { return CARDS.concat(parseCustom(S.custom)); }
+function allCards() { return difficulty().sets.flatMap(k => CARD_SETS[k]).concat(parseCustom(S.custom)); }
 function drawCard() {
   if (!S.deck.length) S.deck = shuffle(allCards().map((_, i) => i));
   const pool = allCards();
   S.card = pool[S.deck.pop()] || pool[0];
 }
 // Keep the 4-point band fully on the dial.
-function newTarget() { const m = bandWidth() * 1.5; S.target = m + Math.random() * (180 - 2 * m); }
+function newTarget() { const m = BAND * 1.5; S.target = m + Math.random() * (180 - 2 * m); }
 
 // ---------- Rendering helpers ----------
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -256,7 +276,7 @@ function wedge(a0, a1, r) {
   return `M${CX},${CY} L${x0.toFixed(2)},${y0.toFixed(2)} A${r},${r} 0 0 1 ${x1.toFixed(2)},${y1.toFixed(2)} Z`;
 }
 function dialSVG({ screenOpen, showNeedle, draggable }) {
-  const t = S.target, b = bandWidth();
+  const t = S.target, b = BAND;
   const bands = [
     [t - 2.5 * b, t - 1.5 * b, "--band2", "2"], [t - 1.5 * b, t - 0.5 * b, "--band3", "3"],
     [t - 0.5 * b, t + 0.5 * b, "--band4", "4"], [t + 0.5 * b, t + 1.5 * b, "--band3", "3"],
@@ -269,7 +289,7 @@ function dialSVG({ screenOpen, showNeedle, draggable }) {
   }
   const labels = bands.map(([a0, a1, , n]) => {
     const [x, y] = pt((a0 + a1) / 2, R - 22);
-    return `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="middle" font-family="var(--font-mono)" font-size="${Math.min(15, b * 2.4).toFixed(1)}" fill="#fff" font-weight="500">${n}</text>`;
+    return `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="middle" font-family="var(--font-mono)" font-size="15" fill="#fff" font-weight="500">${n}</text>`;
   }).join("");
   const [nx, ny] = pt(S.guess, R - 6);
   return `
@@ -327,7 +347,7 @@ const other = i => 1 - i;
 function render() {
   save();
   const app = $("#app");
-  $("#deckInfo").textContent = S.phase === "setup" ? `${allCards().length} cards` : (S.mode === "coop" ? `Card ${S.round} · 2 players` : `Round ${S.round} · ${S.deck.length} cards left`) + ` · ${(DIFFICULTIES[S.difficulty] || DIFFICULTIES.normal).label}`;
+  $("#deckInfo").textContent = S.phase === "setup" ? `${difficulty().label} · ${allCards().length} cards` : (S.mode === "coop" ? `Card ${S.round} · 2 players` : `Round ${S.round} · ${S.deck.length} cards left`) + ` · ${difficulty().label}`;
   const team = esc(names()[S.active]), opp = esc(names()[other(S.active)]);
   const coop = S.mode === "coop";
 
@@ -346,13 +366,13 @@ function render() {
         ${coop
           ? `<label style="max-width:160px">Cards to play<input type="number" id="goal" min="3" max="20" value="${S.coopLen}"></label>`
           : `<label style="max-width:160px">Points to win<input type="number" id="goal" min="3" max="30" value="${S.goal}"></label>`}
-        <div class="field-label" id="diffLabel">Difficulty</div>
+        <div class="field-label" id="diffLabel">Difficulty <span class="hint">· which cards you get</span></div>
         <div class="seg four" role="group" aria-labelledby="diffLabel">
-          ${Object.entries(DIFFICULTIES).map(([k, d]) => `<button id="diff-${k}" data-diff="${k}" aria-pressed="${S.difficulty === k}">${d.label}<span>${d.note}</span></button>`).join("")}
+          ${Object.entries(DIFFICULTIES).map(([k, d]) => `<button id="diff-${k}" data-diff="${k}" aria-pressed="${S.difficulty === k}">${d.label}<span>${d.note} · ${d.sets.reduce((n, x) => n + CARD_SETS[x].length, 0)}</span></button>`).join("")}
         </div>
         <details>
           <summary>Add your own cards</summary>
-          <p class="hint">One card per line, with the two ends separated by a bar. They are shuffled in with the ${CARDS.length} built-in cards.</p>
+          <p class="hint">One card per line, with the two ends separated by a bar. They are shuffled in with the built-in cards at any difficulty.</p>
           <textarea id="custom" placeholder="Bad karaoke song | Great karaoke song">${esc(S.custom)}</textarea>
         </details>
         <div class="row end"><button id="start">Start game</button></div>
