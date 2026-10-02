@@ -16,12 +16,11 @@
   --muted: #5d6385;
   --line: #cfd4ea;
   --dial: #f6f7fd;
-  --screen: #3a3f5c;
-  --static-dot: #c9cde0;
-  --band2: #b6e3d4;
-  --band3: #3fb59e;
-  --band4: #6c3fd6;
-  --band-label: #1c2140;
+  --screen: #2c3a8c;
+  --screen-edge: #1d276a;
+  --band2: #f6c445;
+  --band3: #f08a3c;
+  --band4: #d9403a;
   --needle: #1c2140;
   --accent: #2c3a8c;
   --accent-ink: #ffffff;
@@ -35,15 +34,15 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #12152b; --panel: #1b2040; --ink: #eef0fb; --muted: #a2a8cc; --line: #2f365f;
-    --dial: #232a52; --screen: #0b0d1c; --static-dot: #5a6090; --band2: #3b7f6f; --band3: #2a8f7d;
-    --band4: #8a63f0; --band-label: #eef0fb; --needle: #eef0fb; --accent: #8e9cff; --accent-ink: #12152b;
+    --dial: #232a52; --screen: #4a5bc4; --screen-edge: #6b7be0; --band2: #f2c14e; --band3: #ee8a42;
+    --band4: #e5534b; --needle: #eef0fb; --accent: #8e9cff; --accent-ink: #12152b;
     --left: #6aaeea; --right: #ef7aa6; --good: #4cc48a; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #12152b; --panel: #1b2040; --ink: #eef0fb; --muted: #a2a8cc; --line: #2f365f;
-  --dial: #232a52; --screen: #0b0d1c; --static-dot: #5a6090; --band2: #3b7f6f; --band3: #2a8f7d;
-  --band4: #8a63f0; --band-label: #eef0fb; --needle: #eef0fb; --accent: #8e9cff; --accent-ink: #12152b;
+  --dial: #232a52; --screen: #4a5bc4; --screen-edge: #6b7be0; --band2: #f2c14e; --band3: #ee8a42;
+  --band4: #e5534b; --needle: #eef0fb; --accent: #8e9cff; --accent-ink: #12152b;
   --left: #6aaeea; --right: #ef7aa6; --good: #4cc48a; color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -108,14 +107,10 @@ textarea { min-height: 96px; resize: vertical; font-family: var(--font-mono); fo
 .dialbox { position: relative; }
 svg.dial { width: 100%; max-width: 100%; height: auto; display: block; touch-action: none; user-select: none; -webkit-user-select: none; }
 svg.dial.draggable { cursor: grab; }
-.static { transform-box: view-box; transform-origin: 260px 112px; }
-.static.open { animation: tv-off .75s cubic-bezier(.5,0,.3,1) forwards; }
-@keyframes tv-off {
-  0% { transform: scale(1, 1); opacity: 1; }
-  55% { transform: scale(1, .015); opacity: 1; }
-  100% { transform: scale(0, .015); opacity: 0; }
-}
-@media (prefers-reduced-motion: reduce) { .static.open { animation: none; opacity: 0; } }
+.screen { transform-box: view-box; transform-origin: 260px 250px; transition: transform .9s cubic-bezier(.6,.05,.25,1); }
+.screen.open { transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce) { .screen, .needle { transition: none !important; } }
+.needle { transform-box: view-box; transform-origin: 260px 250px; }
 .clue { font-family: var(--font-display); font-weight: 800; font-size: 1.5rem; text-align: center; overflow-wrap: anywhere; }
 .clue small { display: block; font-family: var(--font-mono); font-weight: 500; font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
 .result { text-align: center; display: flex; flex-direction: column; gap: 6px; }
@@ -272,72 +267,49 @@ function newTarget() { const m = BAND * 1.5; S.target = m + Math.random() * (180
 // ---------- Rendering helpers ----------
 const $ = (sel, root = document) => root.querySelector(sel);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-// Tuner geometry: positions are 0-180 (far left to far right) along a flat track.
-const X0 = 30, X1 = 490, TOP = 48, BASE = 176;
-const xAt = deg => X0 + (deg / 180) * (X1 - X0);
-const degAt = x => ((x - X0) / (X1 - X0)) * 180;
-function staticNoise() {
-  let dots = "";
-  for (let i = 0; i < 420; i++) {
-    const x = 16 + Math.random() * 484, y = 36 + Math.random() * 148, w = 2 + Math.random() * 7;
-    dots += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="2" opacity="${(0.15 + Math.random() * 0.6).toFixed(2)}"/>`;
-  }
-  return dots;
+const CX = 260, CY = 250, R = 230;
+function pt(deg, r) { const a = deg * Math.PI / 180; return [CX - r * Math.cos(a), CY - r * Math.sin(a)]; }
+function wedge(a0, a1, r) {
+  a0 = Math.max(0, a0); a1 = Math.min(180, a1);
+  if (a1 <= a0) return "";
+  const [x0, y0] = pt(a0, r), [x1, y1] = pt(a1, r);
+  return `M${CX},${CY} L${x0.toFixed(2)},${y0.toFixed(2)} A${r},${r} 0 0 1 ${x1.toFixed(2)},${y1.toFixed(2)} Z`;
 }
 function dialSVG({ screenOpen, showNeedle, draggable }) {
   const t = S.target, b = BAND;
   const bands = [
-    [t - 2.5 * b, t - 1.5 * b, "--band2", "2", 50], [t - 1.5 * b, t - 0.5 * b, "--band3", "3", 90],
-    [t - 0.5 * b, t + 0.5 * b, "--band4", "4", BASE - TOP], [t + 0.5 * b, t + 1.5 * b, "--band3", "3", 90],
-    [t + 1.5 * b, t + 2.5 * b, "--band2", "2", 50]
+    [t - 2.5 * b, t - 1.5 * b, "--band2", "2"], [t - 1.5 * b, t - 0.5 * b, "--band3", "3"],
+    [t - 0.5 * b, t + 0.5 * b, "--band4", "4"], [t + 0.5 * b, t + 1.5 * b, "--band3", "3"],
+    [t + 1.5 * b, t + 2.5 * b, "--band2", "2"]
   ];
-  // FM-style scale: 88 to 108, a major tick every 2.
-  const grid = [], scale = [];
-  for (let f = 88; f <= 108; f++) {
-    const x = xAt((f - 88) * 9), major = f % 2 === 0;
-    grid.push(`<line x1="${x}" y1="${major ? 40 : 150}" x2="${x}" y2="${BASE}" stroke="var(--line)" stroke-width="1"/>`);
-    if (major) scale.push(`<text x="${x}" y="22" text-anchor="middle" font-family="var(--font-mono)" font-size="12" fill="var(--muted)">${f}</text>`);
+  const ticks = [];
+  for (let d = 0; d <= 180; d += 10) {
+    const [x0, y0] = pt(d, R + 4), [x1, y1] = pt(d, R + (d % 30 ? 10 : 16));
+    ticks.push(`<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="var(--muted)" stroke-width="${d % 30 ? 1.5 : 2.5}" stroke-linecap="round"/>`);
   }
-  const bars = bands.map(([a0, a1, c, n, h]) => {
-    const l = xAt(Math.max(0, a0)), r = xAt(Math.min(180, a1));
-    if (r <= l) return "";
-    const lx = xAt((a0 + a1) / 2);
-    const label = lx > X0 && lx < X1 ? `<text x="${lx}" y="${BASE - 10}" text-anchor="middle" font-family="var(--font-mono)" font-size="13" fill="${n === "4" ? "#fff" : "var(--band-label)"}">${n}</text>` : "";
-    return `<rect x="${l.toFixed(2)}" y="${BASE - h}" width="${(r - l).toFixed(2)}" height="${h}" fill="var(${c})"/>${label}`;
+  const labels = bands.map(([a0, a1, , n]) => {
+    const [x, y] = pt((a0 + a1) / 2, R - 22);
+    return `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="middle" font-family="var(--font-mono)" font-size="15" fill="#fff" font-weight="500">${n}</text>`;
   }).join("");
-  // The "signal": flat with a faint ripple, peaking over the target.
-  let wave = "";
-  for (let x = X0; x <= X1; x += 2) {
-    const d = (x - xAt(t)) / (xAt(2.2 * b) - xAt(0));
-    const y = BASE - 6 - (BASE - TOP - 6) * Math.exp(-d * d * 1.6) - 3 * Math.sin(x / 5);
-    wave += (x === X0 ? "M" : "L") + x + "," + y.toFixed(1);
-  }
-  const nx = xAt(S.guess);
+  const [nx, ny] = pt(S.guess, R - 6);
   return `
-  <svg class="dial ${draggable ? "draggable" : ""}" viewBox="0 0 520 ${showNeedle ? 230 : 198}" ${draggable ? 'tabindex="0" role="slider" aria-label="Tuner guess" aria-valuemin="0" aria-valuemax="180" aria-valuenow="' + Math.round(S.guess) + '"' : 'aria-hidden="true"'}>
-    <defs><clipPath id="panelClip"><rect x="12" y="32" width="496" height="160" rx="14"/></clipPath></defs>
-    ${scale.join("")}
-    <rect x="12" y="32" width="496" height="160" rx="14" fill="var(--dial)" stroke="var(--line)" stroke-width="2"/>
-    <g clip-path="url(#panelClip)">
-      ${grid.join("")}
-      ${bars}
-      <path d="${wave}" fill="none" stroke="var(--band4)" stroke-width="2.5" stroke-linejoin="round" opacity=".85"/>
-      <line x1="${X0}" y1="${BASE}" x2="${X1}" y2="${BASE}" stroke="var(--muted)" stroke-width="2"/>
-      <g class="static ${screenOpen ? "open" : ""}">
-        <rect x="12" y="32" width="496" height="160" fill="var(--screen)"/>
-        <g fill="var(--static-dot)">${staticNoise()}</g>
-        <text x="260" y="118" text-anchor="middle" font-family="var(--font-mono)" font-size="16" letter-spacing="6" fill="var(--static-dot)">NO SIGNAL</text>
+  <svg class="dial ${draggable ? "draggable" : ""}" viewBox="0 0 520 280" ${draggable ? 'tabindex="0" role="slider" aria-label="Dial guess" aria-valuemin="0" aria-valuemax="180" aria-valuenow="' + Math.round(S.guess) + '"' : 'aria-hidden="true"'}>
+    <defs><clipPath id="top"><rect x="0" y="0" width="520" height="${CY}"/></clipPath></defs>
+    ${ticks.join("")}
+    <path d="${wedge(0, 180, R)}" fill="var(--dial)" stroke="var(--line)" stroke-width="2"/>
+    ${bands.map(([a0, a1, c]) => `<path d="${wedge(a0, a1, R)}" fill="var(${c})"/>`).join("")}
+    ${labels}
+    <g clip-path="url(#top)">
+      <g class="screen ${screenOpen ? "open" : ""}">
+        <path d="${wedge(0, 180, R + 1)}" fill="var(--screen)" stroke="var(--screen-edge)" stroke-width="3"/>
+        <path d="${wedge(0, 180, R * 0.62)}" fill="none" stroke="var(--screen-edge)" stroke-width="2" stroke-dasharray="2 8" stroke-linecap="round"/>
       </g>
     </g>
     ${showNeedle ? `
-      <g class="needle" transform="translate(${nx.toFixed(2)},0)">
-        <line x1="0" y1="34" x2="0" y2="196" stroke="var(--needle)" stroke-width="3"/>
-        <path d="M0,198 L9,207 L-9,207 Z" fill="var(--needle)"/>
-        <rect x="-17" y="206" width="34" height="22" rx="6" fill="var(--needle)"/>
-        <line x1="-6" y1="213" x2="-6" y2="221" stroke="var(--dial)" stroke-width="2"/>
-        <line x1="0" y1="213" x2="0" y2="221" stroke="var(--dial)" stroke-width="2"/>
-        <line x1="6" y1="213" x2="6" y2="221" stroke="var(--dial)" stroke-width="2"/>
-      </g>` : ""}
+      <line class="needle" x1="${CX}" y1="${CY}" x2="${nx}" y2="${ny}" stroke="var(--needle)" stroke-width="7" stroke-linecap="round"/>
+      <circle cx="${nx}" cy="${ny}" r="9" fill="var(--needle)"/>` : ""}
+    <rect x="${CX - 70}" y="${CY}" width="140" height="26" rx="6" fill="var(--needle)"/>
+    <circle cx="${CX}" cy="${CY}" r="26" fill="var(--band4)" stroke="var(--needle)" stroke-width="5"/>
   </svg>`;
 }
 function cardHTML() {
@@ -446,12 +418,12 @@ function render() {
         ${cardHTML()}
         <div class="dialbox">${dialSVG({ screenOpen: S.peek, showNeedle: false })}</div>
         ${S.peek ? `
-          <p class="hint" style="text-align:center">Psychic only. Memorize where the signal peaks, then hide it.</p>
-          <div class="row" style="justify-content:center"><button id="hide">Hide the signal</button></div>`
+          <p class="hint" style="text-align:center">Psychic only. Memorize the target, then close the screen.</p>
+          <div class="row" style="justify-content:center"><button id="hide">Close the screen</button></div>`
         : `
           <p class="hint" style="text-align:center">${coop ? `Pass the device to ${team}. ${opp}, look away.` : `Pass the device to ${team}'s Psychic. Everyone else, look away.`}</p>
           <div class="row" style="justify-content:center">
-            <button id="peek">Tune in (Psychic only)</button>
+            <button id="peek">Peek at target</button>
             <button class="ghost" id="skip">Draw a different card</button>
           </div>
           <label>Clue (optional, so everyone can see it)<input type="text" id="clue" maxlength="60" value="${esc(S.clue)}" placeholder="Say it out loud or type it here"></label>
@@ -469,7 +441,7 @@ function render() {
     app.innerHTML = `
       ${scoresHTML()}
       <section class="panel">
-        <div class="eyebrow">${coop ? opp : team} · Tune the dial</div>
+        <div class="eyebrow">${coop ? opp : team} · Move the needle</div>
         ${cardHTML()}
         ${S.clue ? `<div class="clue"><small>Clue</small>${esc(S.clue)}</div>` : ""}
         <div class="dialbox">${dialSVG({ screenOpen: false, showNeedle: true, draggable: true })}</div>
@@ -521,8 +493,8 @@ function render() {
         </div>
         <div class="row end"><button id="next">${coop && S.cardsLeft <= 0 ? "See your result" : "Next round"}</button></div>
       </section>`;
-    // Switch the static off after first paint.
-    requestAnimationFrame(() => requestAnimationFrame(() => { const s = $("#revealDial .static"); if (s) s.classList.add("open"); }));
+    // Animate the screen opening after first paint.
+    requestAnimationFrame(() => requestAnimationFrame(() => { const s = $("#revealDial .screen"); if (s) s.classList.add("open"); }));
     $("#next").onclick = () => {
       if (coop) {
         if (S.cardsLeft <= 0) { S.phase = "won"; render(); return; }
@@ -607,14 +579,19 @@ function bindDial() {
   const svg = $("svg.dial"), slider = $("#slider");
   const set = deg => {
     S.guess = Math.max(0, Math.min(180, deg));
-    svg.querySelector(".needle").setAttribute("transform", `translate(${xAt(S.guess).toFixed(2)},0)`);
+    const [nx, ny] = pt(S.guess, R - 6);
+    const line = svg.querySelector(".needle"), dot = line.nextElementSibling;
+    line.setAttribute("x2", nx); line.setAttribute("y2", ny);
+    dot.setAttribute("cx", nx); dot.setAttribute("cy", ny);
     svg.setAttribute("aria-valuenow", Math.round(S.guess));
     slider.value = S.guess;
   };
   const fromEvent = e => {
     const p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY;
     const q = p.matrixTransform(svg.getScreenCTM().inverse());
-    set(degAt(q.x));
+    let a = Math.atan2(CY - q.y, CX - q.x) * 180 / Math.PI; // 0 at left, 90 up, 180 right
+    if (a < 0) a = q.x < CX ? 0 : 180;
+    set(a);
   };
   let dragging = false;
   svg.addEventListener("pointerdown", e => { dragging = true; svg.setPointerCapture(e.pointerId); fromEvent(e); });
