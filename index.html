@@ -54,7 +54,11 @@ body {
 }
 .wrap { max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
 .stack { display: flex; flex-direction: column; gap: 18px; }
-header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+/* Title and New game share the top row; the status line sits under them, so nothing reflows. */
+header { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "title reset" "info info"; align-items: center; gap: 6px 12px; }
+header h1 { grid-area: title; }
+header #reset { grid-area: reset; }
+header #deckInfo { grid-area: info; }
 h1 {
   font-family: var(--font-display); font-weight: 800; font-size: clamp(1.8rem, 6vw, 2.4rem);
   letter-spacing: -0.03em; margin: 0; line-height: 1;
@@ -140,15 +144,23 @@ ol.rules b { color: var(--ink); }
 .seg button span { font-weight: 400; font-size: .82rem; color: var(--muted); }
 .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
 .seg button[aria-pressed="true"] span { color: var(--accent-ink); opacity: .85; }
-.confirm { background: var(--bg); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.confirm { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
     <h1>Brain<span class="wave">wave</span></h1>
+    <button class="link" id="reset">New game</button>
     <span class="eyebrow" id="deckInfo"></span>
   </header>
+  <div class="confirm" id="quitConfirm" role="alertdialog" aria-labelledby="quitMsg" hidden>
+    <span id="quitMsg">Quit this game? The scores will be lost.</span>
+    <div class="row">
+      <button class="ghost" id="quitNo">Keep playing</button>
+      <button id="quitYes">Quit game</button>
+    </div>
+  </div>
   <main id="app" class="stack"></main>
 </div>
 
@@ -352,6 +364,8 @@ const other = i => 1 - i;
 function render() {
   save();
   const app = $("#app");
+  $("#quitConfirm").hidden = true;
+  $("#reset").style.visibility = S.phase === "setup" ? "hidden" : "visible";
   $("#deckInfo").textContent = S.phase === "setup" ? `${difficulty().label} · ${allCards().length} cards` : (S.mode === "coop" ? `Card ${S.round} · 2 players` : `Round ${S.round} · ${S.deck.length} cards left`) + ` · ${difficulty().label}`;
   const team = esc(names()[S.active]), opp = esc(names()[other(S.active)]);
   const coop = S.mode === "coop";
@@ -617,18 +631,18 @@ function bindDial() {
   slider.addEventListener("input", () => set(parseFloat(slider.value)));
 }
 
-// Reset link in the header for abandoning a game.
-(function addReset() {
-  const btn = document.createElement("button");
-  btn.className = "link"; btn.textContent = "New game"; btn.id = "reset";
-  btn.onclick = () => {
-    if (S.phase === "setup") return;
-    if (btn.dataset.armed) { const keep = { mode: S.mode, teams: S.teams, players: S.players, goal: S.goal, coopLen: S.coopLen, difficulty: S.difficulty, custom: S.custom }; S = Object.assign(fresh(), keep); delete btn.dataset.armed; btn.textContent = "New game"; render(); return; }
-    btn.dataset.armed = "1"; btn.textContent = "Tap again to quit this game";
-    setTimeout(() => { delete btn.dataset.armed; btn.textContent = "New game"; }, 3000);
-  };
-  $("header").appendChild(btn);
-})();
+// New game in the header asks for confirmation in a bar below, so the button itself never moves.
+$("#reset").onclick = () => {
+  if (S.phase === "setup") return;
+  $("#quitConfirm").hidden = false;
+  $("#quitNo").focus();
+};
+$("#quitNo").onclick = () => { $("#quitConfirm").hidden = true; };
+$("#quitYes").onclick = () => {
+  const keep = { mode: S.mode, teams: S.teams, players: S.players, goal: S.goal, coopLen: S.coopLen, difficulty: S.difficulty, custom: S.custom };
+  S = Object.assign(fresh(), keep);
+  render();
+};
 
 render();
 </script>
