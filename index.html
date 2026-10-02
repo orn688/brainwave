@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="en">
+<head>
+<title>Wavelength Online</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&family=DM+Mono:wght@500&display=swap">
+<style>
+/* Layout: one centered game column — scoreboard strip, spectrum card, the dial as the hero, then the phase's controls. */
+:root {
+  --bg: #e9ecf7;
+  --panel: #ffffff;
+  --ink: #1c2140;
+  --muted: #5d6385;
+  --line: #cfd4ea;
+  --dial: #f6f7fd;
+  --screen: #2c3a8c;
+  --screen-edge: #1d276a;
+  --band2: #f6c445;
+  --band3: #f08a3c;
+  --band4: #d9403a;
+  --needle: #1c2140;
+  --accent: #2c3a8c;
+  --accent-ink: #ffffff;
+  --left: #3f8fd9;
+  --right: #e2558a;
+  --good: #1f8a5b;
+  --font-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "DM Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12152b; --panel: #1b2040; --ink: #eef0fb; --muted: #a2a8cc; --line: #2f365f;
+    --dial: #232a52; --screen: #4a5bc4; --screen-edge: #6b7be0; --band2: #f2c14e; --band3: #ee8a42;
+    --band4: #e5534b; --needle: #eef0fb; --accent: #8e9cff; --accent-ink: #12152b;
+    --left: #6aaeea; --right: #ef7aa6; --good: #4cc48a; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12152b; --panel: #1b2040; --ink: #eef0fb; --muted: #a2a8cc; --line: #2f365f;
+  --dial: #232a52; --screen: #4a5bc4; --screen-edge: #6b7be0; --band2: #f2c14e; --band3: #ee8a42;
+  --band4: #e5534b; --needle: #eef0fb; --accent: #8e9cff; --accent-ink: #12152b;
+  --left: #6aaeea; --right: #ef7aa6; --good: #4cc48a; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { min-height: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 16px/1.5 var(--font-body);
+  padding-inline: 16px; padding-block: 20px 40px;
+}
+.wrap { max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+.stack { display: flex; flex-direction: column; gap: 18px; }
+header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+h1 {
+  font-family: var(--font-display); font-weight: 800; font-size: clamp(1.8rem, 6vw, 2.4rem);
+  letter-spacing: -0.03em; margin: 0; line-height: 1;
+}
+h1 .wave { color: var(--band4); }
+h2 { font-family: var(--font-display); font-weight: 800; font-size: 1.35rem; margin: 0; text-wrap: balance; }
+.eyebrow { font-family: var(--font-mono); font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+
+button {
+  font: 700 1rem/1 var(--font-body); border-radius: 999px; border: 2px solid var(--accent);
+  padding: 12px 20px; cursor: pointer; background: var(--accent); color: var(--accent-ink);
+  transition: transform .08s ease, opacity .15s;
+}
+button:hover { transform: translateY(-1px); }
+button:active { transform: translateY(1px); }
+button.ghost { background: transparent; color: var(--accent); }
+button.link { background: none; border: none; color: var(--muted); padding: 6px 4px; text-decoration: underline; font-weight: 400; font-size: .9rem; }
+button:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+button:focus-visible, input:focus-visible, textarea:focus-visible, svg:focus-visible { outline: 3px solid var(--band3); outline-offset: 2px; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.row.end { justify-content: flex-end; }
+.row > .grow { flex: 1 1 200px; }
+
+label { font-weight: 700; font-size: .9rem; display: flex; flex-direction: column; gap: 6px; }
+input[type=text], input[type=number], textarea {
+  font: 1rem var(--font-body); color: var(--ink); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; width: 100%;
+}
+textarea { min-height: 96px; resize: vertical; font-family: var(--font-mono); font-size: .85rem; }
+.hint { color: var(--muted); font-size: .85rem; margin: 0; }
+
+/* Scoreboard */
+.scores { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.team { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+.team.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
+.team .name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.team .pts { font-family: var(--font-display); font-weight: 800; font-size: 1.8rem; font-variant-numeric: tabular-nums; line-height: 1; }
+.team .pts + .of, .team > span:last-child { white-space: nowrap; }
+.team .of { font-family: var(--font-mono); font-size: .75rem; color: var(--muted); }
+
+/* Spectrum card */
+.card { display: grid; grid-template-columns: 1fr auto 1fr; align-items: stretch; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); }
+.card > div { padding: 12px 14px; font-family: var(--font-display); font-weight: 800; font-size: clamp(1rem, 4.2vw, 1.3rem); line-height: 1.15; display: flex; align-items: center; min-width: 0; overflow-wrap: anywhere; }
+.card .l { background: var(--left); color: #fff; }
+.card .r { background: var(--right); color: #fff; justify-content: flex-end; text-align: right; }
+.card .mid { background: var(--panel); padding: 0 8px; color: var(--muted); font-family: var(--font-mono); font-weight: 500; font-size: .8rem; }
+
+/* Dial */
+.dialbox { position: relative; }
+svg.dial { width: 100%; max-width: 100%; height: auto; display: block; touch-action: none; user-select: none; -webkit-user-select: none; }
+svg.dial.draggable { cursor: grab; }
+.screen { transform-box: view-box; transform-origin: 260px 250px; transition: transform .9s cubic-bezier(.6,.05,.25,1); }
+.screen.open { transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce) { .screen, .needle { transition: none !important; } }
+.needle { transform-box: view-box; transform-origin: 260px 250px; }
+.clue { font-family: var(--font-display); font-weight: 800; font-size: 1.5rem; text-align: center; overflow-wrap: anywhere; }
+.clue small { display: block; font-family: var(--font-mono); font-weight: 500; font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.result { text-align: center; display: flex; flex-direction: column; gap: 6px; }
+.result .big { font-family: var(--font-display); font-weight: 800; font-size: 2.6rem; line-height: 1; }
+.result .big.zero { color: var(--muted); }
+.pill { display: inline-block; font-family: var(--font-mono); font-size: .75rem; padding: 3px 10px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); }
+.lr { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.lr button { padding: 16px; font-size: 1.05rem; }
+.lr .bl { background: var(--left); border-color: var(--left); color: #fff; }
+.lr .br { background: var(--right); border-color: var(--right); color: #fff; }
+input[type=range] { width: 100%; accent-color: var(--accent); }
+.winner { text-align: center; }
+.winner .big { font-family: var(--font-display); font-weight: 800; font-size: clamp(2rem, 9vw, 3rem); line-height: 1.05; text-wrap: balance; }
+details summary { cursor: pointer; font-weight: 700; }
+ol.rules { margin: 8px 0 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 6px; color: var(--muted); max-width: 65ch; }
+ol.rules b { color: var(--ink); }
+.confirm { background: var(--bg); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Wave<span class="wave">length</span></h1>
+    <span class="eyebrow" id="deckInfo"></span>
+  </header>
+  <main id="app" class="stack"></main>
+</div>
+
+<script>
+// ---------- Cards: [left, right] ----------
+const CARDS = [
+  ["Cold","Hot"],["Useless","Useful"],["Underrated","Overrated"],["Bad movie","Good movie"],
+  ["Easy to spell","Hard to spell"],["Scary animal","Cuddly animal"],["Unhealthy food","Healthy food"],
+  ["Boring hobby","Exciting hobby"],["Cheap","Expensive"],["Normal pet","Weird pet"],
+  ["Dry food","Wet food"],["Rough","Smooth"],["Quiet","Loud"],["Ugly word","Beautiful word"],
+  ["Forgettable","Unforgettable"],["Fantasy","Sci-fi"],["Casual","Formal"],["Smells bad","Smells good"],
+  ["Sad song","Happy song"],["Villain","Hero"],["Mild","Spicy"],["Low effort","High effort"],
+  ["Rare","Common"],["Old-fashioned","Futuristic"],["Unpopular opinion","Popular opinion"],
+  ["Bad habit","Good habit"],["Hard to pronounce","Easy to pronounce"],["Ordinary","Extraordinary"],
+  ["Flimsy","Sturdy"],["Tastes bad","Tastes good"],["Underpaid","Overpaid"],["Small talk","Deep conversation"],
+  ["Indoor activity","Outdoor activity"],["Sweet","Savory"],["Soft","Hard"],["Safe","Dangerous"],
+  ["Short-lived","Long-lived"],["Calm","Chaotic"],["Mainstream","Niche"],["Easy job","Hard job"],
+  ["Breakfast food","Dinner food"],["Underdressed","Overdressed"],["Funny","Serious"],
+  ["Lowbrow","Highbrow"],["Analog","Digital"],["Introvert","Extrovert"],["Snack","Meal"],
+  ["Tiny","Huge"],["Fragile","Indestructible"],["Ethical","Unethical"],["Childish","Mature"],
+  ["Square","Round"],["Light","Heavy"],["Sport","Game"],["Useless superpower","Amazing superpower"],
+  ["Worst day of the week","Best day of the week"],["Bad pizza topping","Good pizza topping"],
+  ["Overrated city","Underrated city"],["Normal thing to own","Weird thing to own"],
+  ["Needs no talent","Needs a lot of talent"],["Bad gift","Great gift"],["Feels bad","Feels good"],
+  ["Easy to kill","Hard to kill"],["Rural","Urban"],["Cheap date","Fancy date"],
+  ["Science","Art"],["Unknown","Famous"],["Messy food","Clean food"],["Liquid","Solid"],
+  ["Dog person thing","Cat person thing"],["Ancient","Modern"],["Plain","Fancy"],["Slow","Fast"],
+  ["Comedy","Tragedy"],["Bad advice","Good advice"],["Weak","Strong"],["Nature","Technology"],
+  ["Bad smell","Good smell"],["Inexplicable","Easy to explain"],["Normal","Cursed"],
+  ["Thing you hide","Thing you show off"],["Guilty pleasure","Openly loved"],["Temporary","Permanent"],
+  ["Peaceful","Violent"],["Uncool","Cool"],["Unnecessary","Essential"],["Worst Olympic sport","Best Olympic sport"],
+  ["Hard to sit on","Comfy to sit on"],["Unreliable","Reliable"],["Mean","Nice"],
+  ["Bad name for a pet","Good name for a pet"],["Beginner skill","Expert skill"],["Unsexy","Sexy"],
+  ["Fad","Classic"],["Optimistic","Pessimistic"],["Throwaway","Heirloom"],["Basic","Hipster"],
+  ["Underground","Sky-high"],["Sounds fake","Sounds real"],["Smart","Dumb"],["Bad TV show","Good TV show"],
+  ["Poorly made","Well made"],["Easy to find","Hard to find"],["Harmless","Harmful"],
+  ["Worst era to live in","Best era to live in"],["Normal sandwich","Weird sandwich"],
+  ["Short","Long"],["Boring city","Exciting city"],["Low quality","High quality"],["Dirty","Clean"],
+  ["Vice","Virtue"],["Better hot","Better cold"],["Unattractive","Attractive"],["Shy","Bold"],
+  ["Painless","Painful"],["Bad superhero","Good superhero"],["Bad board game","Good board game"],
+  ["Easy to remember","Hard to remember"],["Relaxing","Stressful"],["Sad","Happy"],
+  ["Minor inconvenience","Major disaster"],["Stays the same","Always changing"],
+  ["Thing you buy once","Thing you buy all the time"],["Worst fast food","Best fast food"],
+  ["For kids","For adults"],["Dull","Sharp"],["Bad first date idea","Good first date idea"],
+  ["Underground band","Stadium band"],["Bad fashion","Good fashion"],["Weird word","Normal word"],
+  ["Low-tech","High-tech"],["Best eaten raw","Best eaten cooked"],["Waste of money","Worth every penny"],
+  ["Trashy","Classy"],["Normal job","Weird job"],["Introverted animal","Extroverted animal"],
+  ["Easy instrument","Hard instrument"],["Boring sport to watch","Exciting sport to watch"],
+  ["Mildly annoying","Infuriating"],["Unlikely","Likely"],["Smells like childhood","Smells like adulthood"],
+  ["Bad breakfast","Good breakfast"],["Least important invention","Most important invention"],
+  ["Round animal","Pointy animal"],["Normal holiday","Weird holiday"],["Unscientific","Scientific"],
+  ["Small problem","Big problem"],["Easy to draw","Hard to draw"],["Bad candy","Good candy"],
+  ["Lazy","Hardworking"],["Better as a book","Better as a movie"],["Gets better with age","Gets worse with age"],
+  ["Needs a remake","Untouchable classic"],["Cozy","Uncomfortable"],["Party","Funeral"]
+];
+
+// ---------- Scoring geometry (degrees, 0 = far left, 180 = far right) ----------
+const BAND = 7.5;           // width of each scoring band
+const MARGIN = BAND * 1.5;  // keep the 4-point band fully on the dial
+function scoreFor(target, guess) {
+  const d = Math.abs(target - guess);
+  if (d <= BAND / 2) return 4;
+  if (d <= BAND * 1.5) return 3;
+  if (d <= BAND * 2.5) return 2;
+  return 0;
+}
+
+// ---------- State ----------
+const STORE_KEY = "wavelength-game-v1";
+const fresh = () => ({
+  phase: "setup", teams: ["Team Sky", "Team Ember"], scores: [0, 0], goal: 10,
+  active: 0, deck: [], card: null, target: 90, guess: 90, clue: "", lr: null,
+  peek: false, last: null, extraTurn: false, custom: "", round: 0
+});
+let S = fresh();
+try { const saved = JSON.parse(localStorage.getItem(STORE_KEY)); if (saved && saved.phase) S = Object.assign(fresh(), saved); } catch (e) {}
+if (window.claude?.hot?.data?.S) S = window.claude.hot.data.S;
+window.claude?.hot?.snapshot?.(() => ({ S }));
+function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch (e) {} }
+
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function parseCustom(text) {
+  return text.split("\n").map(l => l.split("|").map(s => s.trim())).filter(p => p.length === 2 && p[0] && p[1]);
+}
+function allCards() { return CARDS.concat(parseCustom(S.custom)); }
+function drawCard() {
+  if (!S.deck.length) S.deck = shuffle(allCards().map((_, i) => i));
+  const pool = allCards();
+  S.card = pool[S.deck.pop()] || pool[0];
+}
+function newTarget() { S.target = MARGIN + Math.random() * (180 - 2 * MARGIN); }
+
+// ---------- Rendering helpers ----------
+const $ = (sel, root = document) => root.querySelector(sel);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const CX = 260, CY = 250, R = 230;
+function pt(deg, r) { const a = deg * Math.PI / 180; return [CX - r * Math.cos(a), CY - r * Math.sin(a)]; }
+function wedge(a0, a1, r) {
+  a0 = Math.max(0, a0); a1 = Math.min(180, a1);
+  if (a1 <= a0) return "";
+  const [x0, y0] = pt(a0, r), [x1, y1] = pt(a1, r);
+  return `M${CX},${CY} L${x0.toFixed(2)},${y0.toFixed(2)} A${r},${r} 0 0 1 ${x1.toFixed(2)},${y1.toFixed(2)} Z`;
+}
+function dialSVG({ screenOpen, showNeedle, draggable }) {
+  const t = S.target, b = BAND;
+  const bands = [
+    [t - 2.5 * b, t - 1.5 * b, "--band2", "2"], [t - 1.5 * b, t - 0.5 * b, "--band3", "3"],
+    [t - 0.5 * b, t + 0.5 * b, "--band4", "4"], [t + 0.5 * b, t + 1.5 * b, "--band3", "3"],
+    [t + 1.5 * b, t + 2.5 * b, "--band2", "2"]
+  ];
+  const ticks = [];
+  for (let d = 0; d <= 180; d += 10) {
+    const [x0, y0] = pt(d, R + 4), [x1, y1] = pt(d, R + (d % 30 ? 10 : 16));
+    ticks.push(`<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="var(--muted)" stroke-width="${d % 30 ? 1.5 : 2.5}" stroke-linecap="round"/>`);
+  }
+  const labels = bands.map(([a0, a1, , n]) => {
+    const [x, y] = pt((a0 + a1) / 2, R - 22);
+    return `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="middle" font-family="var(--font-mono)" font-size="15" fill="#fff" font-weight="500">${n}</text>`;
+  }).join("");
+  const [nx, ny] = pt(S.guess, R - 6);
+  return `
+  <svg class="dial ${draggable ? "draggable" : ""}" viewBox="0 0 520 280" ${draggable ? 'tabindex="0" role="slider" aria-label="Dial guess" aria-valuemin="0" aria-valuemax="180" aria-valuenow="' + Math.round(S.guess) + '"' : 'aria-hidden="true"'}>
+    <defs><clipPath id="top"><rect x="0" y="0" width="520" height="${CY}"/></clipPath></defs>
+    ${ticks.join("")}
+    <path d="${wedge(0, 180, R)}" fill="var(--dial)" stroke="var(--line)" stroke-width="2"/>
+    ${bands.map(([a0, a1, c]) => `<path d="${wedge(a0, a1, R)}" fill="var(${c})"/>`).join("")}
+    ${labels}
+    <g clip-path="url(#top)">
+      <g class="screen ${screenOpen ? "open" : ""}">
+        <path d="${wedge(0, 180, R + 1)}" fill="var(--screen)" stroke="var(--screen-edge)" stroke-width="3"/>
+        <path d="${wedge(0, 180, R * 0.62)}" fill="none" stroke="var(--screen-edge)" stroke-width="2" stroke-dasharray="2 8" stroke-linecap="round"/>
+      </g>
+    </g>
+    ${showNeedle ? `
+      <line class="needle" x1="${CX}" y1="${CY}" x2="${nx}" y2="${ny}" stroke="var(--needle)" stroke-width="7" stroke-linecap="round"/>
+      <circle cx="${nx}" cy="${ny}" r="9" fill="var(--needle)"/>` : ""}
+    <rect x="${CX - 70}" y="${CY}" width="140" height="26" rx="6" fill="var(--needle)"/>
+    <circle cx="${CX}" cy="${CY}" r="26" fill="var(--band4)" stroke="var(--needle)" stroke-width="5"/>
+  </svg>`;
+}
+function cardHTML() {
+  if (!S.card) return "";
+  return `<div class="card"><div class="l">${esc(S.card[0])}</div><div class="mid">◄ ►</div><div class="r">${esc(S.card[1])}</div></div>`;
+}
+function scoresHTML() {
+  return `<div class="scores">${S.teams.map((n, i) => `
+    <div class="team ${S.phase !== "setup" && S.phase !== "won" && S.active === i ? "active" : ""}">
+      <span class="name">${esc(n)}</span>
+      <span><span class="pts">${S.scores[i]}</span><span class="of"> / ${S.goal}</span></span>
+    </div>`).join("")}</div>`;
+}
+const other = i => 1 - i;
+
+// ---------- Phases ----------
+function render() {
+  save();
+  const app = $("#app");
+  $("#deckInfo").textContent = S.phase === "setup" ? `${allCards().length} cards` : `Round ${S.round} · ${S.deck.length} cards left`;
+  const team = esc(S.teams[S.active]), opp = esc(S.teams[other(S.active)]);
+
+  if (S.phase === "setup") {
+    app.innerHTML = `
+      <section class="panel">
+        <h2>New game</h2>
+        <div class="row">
+          <label class="grow">First team<input type="text" id="t0" value="${esc(S.teams[0])}" maxlength="24"></label>
+          <label class="grow">Second team<input type="text" id="t1" value="${esc(S.teams[1])}" maxlength="24"></label>
+        </div>
+        <label style="max-width:160px">Points to win<input type="number" id="goal" min="3" max="30" value="${S.goal}"></label>
+        <details>
+          <summary>Add your own cards</summary>
+          <p class="hint">One card per line, with the two ends separated by a bar. They are shuffled in with the ${CARDS.length} built-in cards.</p>
+          <textarea id="custom" placeholder="Bad karaoke song | Great karaoke song">${esc(S.custom)}</textarea>
+        </details>
+        <div class="row end"><button id="start">Start game</button></div>
+      </section>
+      <section class="panel">
+        <details open>
+          <summary>How to play</summary>
+          <ol class="rules">
+            <li>Each round, one player on the active team is the <b>Psychic</b>. Everyone else looks away while the Psychic peeks at the hidden target.</li>
+            <li>The Psychic gives a <b>clue</b> that sits at that spot between the two ends of the card. For "Cold ↔ Hot", a clue near the right might be "Lava".</li>
+            <li>Their team talks it over and drags the <b>needle</b> to where they think the target is.</li>
+            <li>The other team calls whether the target is to the <b>left or right</b> of the needle.</li>
+            <li>Reveal. The guessing team scores 2, 3 or 4 by band. If they missed the bullseye and the other team called the side right, that team scores 1.</li>
+            <li>A team that hits the 4 while still behind gets another turn. First team to the goal wins.</li>
+          </ol>
+        </details>
+      </section>`;
+    $("#start").onclick = () => {
+      S.teams = [$("#t0").value.trim() || "Team Sky", $("#t1").value.trim() || "Team Ember"];
+      S.goal = Math.max(3, Math.min(30, parseInt($("#goal").value, 10) || 10));
+      S.custom = $("#custom").value;
+      S.scores = [0, 0]; S.active = Math.random() < 0.5 ? 0 : 1; S.deck = []; S.round = 0;
+      startRound();
+    };
+    return;
+  }
+
+  if (S.phase === "psychic") {
+    app.innerHTML = `
+      ${scoresHTML()}
+      <section class="panel">
+        <div class="eyebrow">${team} · Psychic's turn${S.extraTurn ? " · bonus turn" : ""}</div>
+        ${cardHTML()}
+        <div class="dialbox">${dialSVG({ screenOpen: S.peek, showNeedle: false })}</div>
+        ${S.peek ? `
+          <p class="hint" style="text-align:center">Psychic only. Memorize the target, then close the screen.</p>
+          <div class="row" style="justify-content:center"><button id="hide">Close the screen</button></div>`
+        : `
+          <p class="hint" style="text-align:center">Pass the device to ${team}'s Psychic. Everyone else, look away.</p>
+          <div class="row" style="justify-content:center">
+            <button id="peek">Peek at target</button>
+            <button class="ghost" id="skip">Draw a different card</button>
+          </div>
+          <label>Clue (optional, so everyone can see it)<input type="text" id="clue" maxlength="60" value="${esc(S.clue)}" placeholder="Say it out loud or type it here"></label>
+          <div class="row end"><button id="toGuess">Clue given, start guessing</button></div>`}
+      </section>`;
+    if (S.peek) { $("#hide").onclick = () => { S.peek = false; render(); }; return; }
+    $("#peek").onclick = () => { S.peek = true; render(); };
+    $("#skip").onclick = () => { drawCard(); newTarget(); render(); };
+    $("#clue").oninput = e => { S.clue = e.target.value; save(); };
+    $("#toGuess").onclick = () => { S.phase = "guess"; S.guess = 90; render(); };
+    return;
+  }
+
+  if (S.phase === "guess") {
+    app.innerHTML = `
+      ${scoresHTML()}
+      <section class="panel">
+        <div class="eyebrow">${team} · Move the needle</div>
+        ${cardHTML()}
+        ${S.clue ? `<div class="clue"><small>Clue</small>${esc(S.clue)}</div>` : ""}
+        <div class="dialbox">${dialSVG({ screenOpen: false, showNeedle: true, draggable: true })}</div>
+        <input type="range" id="slider" min="0" max="180" step="0.5" value="${S.guess}" aria-label="Needle position">
+        <div class="row end"><button id="lock">Lock in guess</button></div>
+      </section>`;
+    bindDial();
+    $("#lock").onclick = () => { S.phase = "leftright"; render(); };
+    return;
+  }
+
+  if (S.phase === "leftright") {
+    app.innerHTML = `
+      ${scoresHTML()}
+      <section class="panel">
+        <div class="eyebrow">${opp} · Call the side</div>
+        ${cardHTML()}
+        ${S.clue ? `<div class="clue"><small>Clue</small>${esc(S.clue)}</div>` : ""}
+        <div class="dialbox">${dialSVG({ screenOpen: false, showNeedle: true })}</div>
+        <p class="hint" style="text-align:center">${opp}: is the target to the left or right of ${team}'s needle?</p>
+        <div class="lr">
+          <button class="bl" id="callL">◄ Left</button>
+          <button class="br" id="callR">Right ►</button>
+        </div>
+        <div class="row" style="justify-content:center"><button class="link" id="back">Back to the needle</button></div>
+      </section>`;
+    $("#callL").onclick = () => reveal("L");
+    $("#callR").onclick = () => reveal("R");
+    $("#back").onclick = () => { S.phase = "guess"; render(); };
+    return;
+  }
+
+  if (S.phase === "reveal") {
+    const L = S.last;
+    const sideWord = L.side === "L" ? "left" : "right";
+    app.innerHTML = `
+      ${scoresHTML()}
+      <section class="panel">
+        <div class="eyebrow">Reveal</div>
+        ${cardHTML()}
+        ${S.clue ? `<div class="clue"><small>Clue</small>${esc(S.clue)}</div>` : ""}
+        <div class="dialbox" id="revealDial">${dialSVG({ screenOpen: false, showNeedle: true })}</div>
+        <div class="result">
+          <div class="big ${L.pts ? "" : "zero"}">${L.pts ? "+" + L.pts : "0"}</div>
+          <div>${L.pts === 4 ? "Bullseye for " + team + "!" : L.pts ? team + " scores " + L.pts + "." : team + " missed the bands."}</div>
+          <div><span class="pill">${opp} called ${sideWord} · ${L.oppPt ? "+1 for " + opp : L.pts === 4 ? "no steal on a bullseye" : "wrong side"}</span></div>
+          ${L.extra ? `<div class="hint">${team} hit the bullseye while behind and goes again.</div>` : ""}
+        </div>
+        <div class="row end"><button id="next">Next round</button></div>
+      </section>`;
+    // Animate the screen opening after first paint.
+    requestAnimationFrame(() => requestAnimationFrame(() => { const s = $("#revealDial .screen"); if (s) s.classList.add("open"); }));
+    $("#next").onclick = () => {
+      const w = S.scores.findIndex(s => s >= S.goal);
+      if (w >= 0) { S.phase = "won"; S.winner = S.scores[0] === S.scores[1] ? S.active : (S.scores[0] > S.scores[1] ? 0 : 1); render(); return; }
+      if (!L.extra) S.active = other(S.active);
+      startRound(L.extra);
+    };
+    return;
+  }
+
+  if (S.phase === "won") {
+    app.innerHTML = `
+      ${scoresHTML()}
+      <section class="panel winner">
+        <div class="eyebrow">Game over after ${S.round} rounds</div>
+        <div class="big">${esc(S.teams[S.winner])} wins</div>
+        <p class="hint">${S.scores[S.winner]} to ${S.scores[other(S.winner)]}</p>
+        <div class="row" style="justify-content:center">
+          <button id="again">Play again</button>
+          <button class="ghost" id="setup">Change teams</button>
+        </div>
+      </section>`;
+    $("#again").onclick = () => { S.scores = [0, 0]; S.round = 0; S.active = other(S.winner); startRound(); };
+    $("#setup").onclick = () => { S.phase = "setup"; render(); };
+  }
+}
+
+function startRound(extra = false) {
+  S.round++; S.clue = ""; S.peek = false; S.lr = null; S.extraTurn = extra;
+  drawCard(); newTarget(); S.guess = 90; S.phase = "psychic"; render();
+}
+
+function reveal(side) {
+  const pts = scoreFor(S.target, S.guess);
+  const targetSide = S.target < S.guess ? "L" : "R";
+  const oppPt = pts < 4 && side === targetSide ? 1 : 0;
+  S.scores[S.active] += pts;
+  S.scores[other(S.active)] += oppPt;
+  const extra = pts === 4 && S.scores[S.active] < S.scores[other(S.active)] && !S.scores.some(s => s >= S.goal);
+  S.last = { pts, oppPt, side, extra };
+  S.phase = "reveal";
+  render();
+}
+
+function bindDial() {
+  const svg = $("svg.dial"), slider = $("#slider");
+  const set = deg => {
+    S.guess = Math.max(0, Math.min(180, deg));
+    const [nx, ny] = pt(S.guess, R - 6);
+    const line = svg.querySelector(".needle"), dot = line.nextElementSibling;
+    line.setAttribute("x2", nx); line.setAttribute("y2", ny);
+    dot.setAttribute("cx", nx); dot.setAttribute("cy", ny);
+    svg.setAttribute("aria-valuenow", Math.round(S.guess));
+    slider.value = S.guess;
+  };
+  const fromEvent = e => {
+    const p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY;
+    const q = p.matrixTransform(svg.getScreenCTM().inverse());
+    let a = Math.atan2(CY - q.y, CX - q.x) * 180 / Math.PI; // 0 at left, 90 up, 180 right
+    if (a < 0) a = q.x < CX ? 0 : 180;
+    set(a);
+  };
+  let dragging = false;
+  svg.addEventListener("pointerdown", e => { dragging = true; svg.setPointerCapture(e.pointerId); fromEvent(e); });
+  svg.addEventListener("pointermove", e => { if (dragging) fromEvent(e); });
+  svg.addEventListener("pointerup", () => { dragging = false; save(); });
+  svg.addEventListener("pointercancel", () => { dragging = false; });
+  svg.addEventListener("keydown", e => {
+    const step = e.shiftKey ? 5 : 1;
+    if (e.key === "ArrowLeft" || e.key === "ArrowDown") { set(S.guess - step); e.preventDefault(); }
+    if (e.key === "ArrowRight" || e.key === "ArrowUp") { set(S.guess + step); e.preventDefault(); }
+  });
+  slider.addEventListener("input", () => set(parseFloat(slider.value)));
+}
+
+// Reset link in the header for abandoning a game.
+(function addReset() {
+  const btn = document.createElement("button");
+  btn.className = "link"; btn.textContent = "New game"; btn.id = "reset";
+  btn.onclick = () => {
+    if (S.phase === "setup") return;
+    if (btn.dataset.armed) { const keep = { teams: S.teams, goal: S.goal, custom: S.custom }; S = Object.assign(fresh(), keep); delete btn.dataset.armed; btn.textContent = "New game"; render(); return; }
+    btn.dataset.armed = "1"; btn.textContent = "Tap again to quit this game";
+    setTimeout(() => { delete btn.dataset.armed; btn.textContent = "New game"; }, 3000);
+  };
+  $("header").appendChild(btn);
+})();
+
+render();
+</script>
+</body>
+</html>
