@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-<title>Wavelength Online</title>
+<title>Brainwave</title>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -141,7 +141,7 @@ ol.rules b { color: var(--ink); }
 <body>
 <div class="wrap">
   <header>
-    <h1>Wave<span class="wave">length</span></h1>
+    <h1>Brain<span class="wave">wave</span></h1>
     <span class="eyebrow" id="deckInfo"></span>
   </header>
   <main id="app" class="stack"></main>
@@ -237,7 +237,7 @@ function scoreFor(target, guess) {
 }
 
 // ---------- State ----------
-const STORE_KEY = "wavelength-game-v1";
+const STORE_KEY = "wavelength-game-v1"; // original key, kept so saved games survive the rename
 const fresh = () => ({
   phase: "setup", mode: "teams", teams: ["Team Sky", "Team Ember"], players: ["Player 1", "Player 2"],
   scores: [0, 0], goal: 10, coopLen: 7, cardsLeft: 7, total: 0, difficulty: "normal",
