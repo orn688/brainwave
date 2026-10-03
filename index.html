@@ -83,7 +83,7 @@ button:active { transform: translateY(1px); }
 button.ghost { background: transparent; color: var(--accent); }
 button.link { background: none; border: none; color: var(--muted); padding: 6px 4px; text-decoration: underline; font-weight: 400; font-size: .9rem; }
 button:disabled { opacity: .4; cursor: not-allowed; transform: none; }
-button:focus-visible, input:focus-visible, textarea:focus-visible, svg:focus-visible { outline: 3px solid var(--band3); outline-offset: 2px; }
+button:focus-visible, input:focus-visible, textarea:focus-visible, svg.dial.kbd:focus { outline: 3px solid var(--band3); outline-offset: 2px; }
 .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .row.end { justify-content: flex-end; }
 .row > .grow { flex: 1 1 200px; }
@@ -114,7 +114,8 @@ textarea { min-height: 96px; resize: vertical; font-family: var(--font-mono); fo
 
 /* Dial */
 .dialbox { position: relative; }
-svg.dial { width: 100%; max-width: 100%; height: auto; display: block; touch-action: none; user-select: none; -webkit-user-select: none; }
+/* No browser focus box or tap flash when dragging; a ring shows only after arrow-key use (.kbd). */
+svg.dial { outline: none; -webkit-tap-highlight-color: transparent; width: 100%; max-width: 100%; height: auto; display: block; touch-action: none; user-select: none; -webkit-user-select: none; }
 svg.dial.draggable { cursor: grab; }
 .screen { transform-box: view-box; transform-origin: 260px 250px; transition: transform .9s cubic-bezier(.6,.05,.25,1); }
 .screen.open { transform: rotate(180deg); }
@@ -678,11 +679,12 @@ function bindDial() {
     set(a);
   };
   let dragging = false;
-  svg.addEventListener("pointerdown", e => { dragging = true; svg.setPointerCapture(e.pointerId); fromEvent(e); });
+  svg.addEventListener("pointerdown", e => { svg.classList.remove("kbd"); dragging = true; svg.setPointerCapture(e.pointerId); fromEvent(e); });
   svg.addEventListener("pointermove", e => { if (dragging) fromEvent(e); });
   svg.addEventListener("pointerup", () => { dragging = false; save(); });
   svg.addEventListener("pointercancel", () => { dragging = false; });
   svg.addEventListener("keydown", e => {
+    if (e.key.startsWith("Arrow")) svg.classList.add("kbd");
     const step = e.shiftKey ? 5 : 1;
     if (e.key === "ArrowLeft" || e.key === "ArrowDown") { set(S.guess - step); e.preventDefault(); }
     if (e.key === "ArrowRight" || e.key === "ArrowUp") { set(S.guess + step); e.preventDefault(); }
