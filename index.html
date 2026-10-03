@@ -282,8 +282,8 @@ function drawCard() {
   const pool = allCards();
   S.card = pool[S.deck.pop()] || pool[0];
 }
-// The target can land anywhere, right up to either end; bands past the edge are cut off.
-function newTarget() { S.target = Math.random() * 180; }
+// The 4 band always fits on the dial; the 3 and 2 bands past an edge are cut off.
+function newTarget() { const m = BAND / 2; S.target = m + Math.random() * (180 - 2 * m); }
 
 // ---------- Rendering helpers ----------
 const $ = (sel, root = document) => root.querySelector(sel);
