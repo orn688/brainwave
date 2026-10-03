@@ -123,8 +123,45 @@ svg.dial.draggable { cursor: grab; }
 .needle { transform-box: view-box; transform-origin: 260px 250px; }
 button.bl { background: var(--left); border-color: var(--left); color: #fff; }
 button.br { background: var(--right); border-color: var(--right); color: #fff; }
-.score-box { min-height: 48px; border-radius: 999px; border: 2px solid var(--line); display: grid; place-items: center; font-family: var(--font-display); font-weight: 800; font-size: 1.6rem; line-height: 1; font-variant-numeric: tabular-nums; }
-.score-box.zero { color: var(--muted); }
+.clue-actions .wide { grid-column: 1 / -1; }
+/* Points pop over the dial once the cover has swung open, then float away. */
+.points-pop { position: absolute; inset: 0; pointer-events: none; display: grid; place-items: center; padding-bottom: 14%; }
+.points-pop .num {
+  font-family: var(--font-display); font-weight: 800; font-size: clamp(3.6rem, 17vw, 6.5rem); line-height: 1;
+  color: var(--pop-color); text-shadow: 0 5px 0 var(--needle), 0 10px 24px rgba(0, 0, 0, .3);
+  opacity: 0; animation: points-pop 1.7s .85s cubic-bezier(.3, 1.4, .5, 1) both;
+}
+.points-pop.p4 { --pop-color: var(--band4); }
+.points-pop.p3 { --pop-color: var(--band3); }
+.points-pop.p2 { --pop-color: var(--band2); }
+.points-pop.p0 { --pop-color: var(--muted); }
+.points-pop.p0 .num { font-size: clamp(2.6rem, 12vw, 4.5rem); }
+@keyframes points-pop {
+  0% { opacity: 0; transform: scale(.2) rotate(-14deg); }
+  18% { opacity: 1; transform: scale(1.25) rotate(5deg); }
+  30% { transform: scale(.95) rotate(-2deg); }
+  40% { transform: scale(1) rotate(0); }
+  78% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-40%) scale(.9); }
+}
+.points-pop .ring {
+  position: absolute; width: 30%; aspect-ratio: 1; max-width: 100%; border-radius: 50%; border: 5px solid var(--band4);
+  opacity: 0; animation: points-ring .9s .85s ease-out both;
+}
+@keyframes points-ring { 0% { opacity: 1; transform: scale(.2); } 100% { opacity: 0; transform: scale(2.4); } }
+.points-pop .spark {
+  position: absolute; width: 10px; height: 10px; border-radius: 50%; background: var(--c);
+  opacity: 0; animation: points-spark .9s .9s ease-out both;
+}
+@keyframes points-spark {
+  0% { opacity: 1; transform: rotate(var(--a)) translateX(0) scale(1); }
+  100% { opacity: 0; transform: rotate(var(--a)) translateX(min(34vw, 190px)) scale(.4); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .points-pop .num { animation: points-fade 1.7s .3s both; }
+  .points-pop .ring, .points-pop .spark { display: none; }
+  @keyframes points-fade { 0%, 100% { opacity: 0; } 15%, 80% { opacity: 1; } }
+}
 input[type=range] { width: 100%; accent-color: var(--accent); }
 .winner { text-align: center; }
 .winner .big { font-family: var(--font-display); font-weight: 800; font-size: clamp(2rem, 9vw, 3rem); line-height: 1.05; text-wrap: balance; }
@@ -548,8 +585,14 @@ function render() {
     const L = S.last;
     const sideWord = L.side === "L" ? "left" : "right";
     const scoreText = coop
-      ? (L.pts === 4 ? "Bullseye!" : L.pts ? `You score ${L.pts}.` : "Missed the bands this time.")
-      : (L.pts === 4 ? "Bullseye!" : L.pts ? `${team} scores ${L.pts}.` : "Missed the bands.");
+      ? (L.pts === 4 ? "Bullseye! You score 4." : L.pts ? `You score ${L.pts}.` : "Missed the bands this time.")
+      : (L.pts === 4 ? `Bullseye! ${team} scores 4.` : L.pts ? `${team} scores ${L.pts}.` : `${team} missed the bands.`);
+    const sparkColors = ["--band4", "--band3", "--band2"];
+    const burst = L.pts === 4
+      ? `<span class="ring"></span>` + Array.from({ length: 12 }, (_, i) =>
+          `<span class="spark" style="--a:${i * 30}deg;--c:var(${sparkColors[i % 3]})"></span>`).join("")
+      : "";
+    const pop = `<div class="points-pop p${L.pts}" aria-hidden="true">${burst}<span class="num">${L.pts ? "+" + L.pts : "Miss"}</span></div>`;
     const stealText = coop ? "" : ` ${opp} called ${sideWord}: ${L.oppPt ? "+1" : L.pts === 4 ? "no steal" : "wrong side"}.`;
     const footer = coop
       ? (L.pts === 4 ? "You earn a bonus card." : "")
@@ -557,10 +600,9 @@ function render() {
     app.innerHTML = scoresHTML() + roundPanel({
       head: "Reveal",
       dialId: "revealDial",
-      dial: dialSVG({ screenOpen: false, showNeedle: true }),
+      dial: dialSVG({ screenOpen: false, showNeedle: true }) + pop,
       message: scoreText + stealText,
-      actions: `<div class="score-box ${L.pts ? "" : "zero"}" aria-label="${L.pts} points">${L.pts ? "+" + L.pts : "0"}</div>
-          <button id="next">${coop && S.cardsLeft <= 0 ? "See your result" : "Next round"}</button>`,
+      actions: `<button id="next" class="wide">${coop && S.cardsLeft <= 0 ? "See your result" : "Next round"}</button>`,
       footer: footer ? `<span class="hint">${footer}</span>` : ""
     });
     // Animate the screen opening after first paint.
