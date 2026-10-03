@@ -146,12 +146,12 @@ button.br { background: var(--right); border-color: var(--right); color: #fff; }
 }
 .points-pop .ring {
   position: absolute; width: 30%; aspect-ratio: 1; max-width: 100%; border-radius: 50%; border: 5px solid var(--band4);
-  opacity: 0; animation: points-ring .9s .85s ease-out both;
+  opacity: 0; animation: points-ring .9s .85s ease-out forwards;
 }
 @keyframes points-ring { 0% { opacity: 1; transform: scale(.2); } 100% { opacity: 0; transform: scale(2.4); } }
 .points-pop .spark {
   position: absolute; width: 10px; height: 10px; border-radius: 50%; background: var(--c);
-  opacity: 0; animation: points-spark .9s .9s ease-out both;
+  opacity: 0; animation: points-spark .9s .9s ease-out forwards;
 }
 @keyframes points-spark {
   0% { opacity: 1; transform: rotate(var(--a)) translateX(0) scale(1); }
