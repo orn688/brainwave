@@ -27,6 +27,10 @@
   --left: #3f8fd9;
   --right: #e2558a;
   --good: #1f8a5b;
+  --danger: #c4302b;
+  --danger-bg: #fdeceb;
+  --danger-ink: #ffffff;
+  --scrim: rgba(18, 21, 43, .45);
   --font-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
   --font-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
   --font-mono: "DM Mono", ui-monospace, "SF Mono", Menlo, monospace;
@@ -36,14 +40,14 @@
     --bg: #12152b; --panel: #1b2040; --ink: #eef0fb; --muted: #a2a8cc; --line: #2f365f;
     --dial: #232a52; --screen: #4a5bc4; --screen-edge: #6b7be0; --band2: #f2c14e; --band3: #ee8a42;
     --band4: #e5534b; --needle: #eef0fb; --accent: #8e9cff; --accent-ink: #12152b;
-    --left: #6aaeea; --right: #ef7aa6; --good: #4cc48a; color-scheme: dark;
+    --left: #6aaeea; --right: #ef7aa6; --good: #4cc48a; --danger: #f0625a; --danger-bg: #3b1a24; --danger-ink: #1b0f14; --scrim: rgba(5, 6, 15, .6); color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #12152b; --panel: #1b2040; --ink: #eef0fb; --muted: #a2a8cc; --line: #2f365f;
   --dial: #232a52; --screen: #4a5bc4; --screen-edge: #6b7be0; --band2: #f2c14e; --band3: #ee8a42;
   --band4: #e5534b; --needle: #eef0fb; --accent: #8e9cff; --accent-ink: #12152b;
-  --left: #6aaeea; --right: #ef7aa6; --good: #4cc48a; color-scheme: dark;
+  --left: #6aaeea; --right: #ef7aa6; --good: #4cc48a; --danger: #f0625a; --danger-bg: #3b1a24; --danger-ink: #1b0f14; --scrim: rgba(5, 6, 15, .6); color-scheme: dark;
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -131,10 +135,9 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
 .winner .big { font-family: var(--font-display); font-weight: 800; font-size: clamp(2rem, 9vw, 3rem); line-height: 1.05; text-wrap: balance; }
 details summary { cursor: pointer; font-weight: 700; }
 .peek-hint { text-align: center; min-height: 3em; margin: 0; display: grid; place-items: center; }
-.card-row { display: flex; gap: 8px; align-items: stretch; }
-.card-row .card { flex: 1; min-width: 0; }
-.icon-btn { flex: none; width: 48px; padding: 0; display: grid; place-items: center; border-radius: 12px; background: var(--panel); color: var(--accent); border: 1px solid var(--line); }
-.icon-btn svg { width: 22px; height: 22px; }
+.panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 36px; margin-block: -6px; }
+.icon-btn { flex: none; width: 36px; height: 36px; padding: 0; display: grid; place-items: center; border-radius: 10px; background: var(--panel); color: var(--accent); border: 1px solid var(--line); }
+.icon-btn svg { width: 18px; height: 18px; }
 .icon-btn:hover { border-color: var(--accent); }
 .clue-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .clue-actions button { min-height: 48px; padding-inline: 8px; line-height: 1.2; white-space: nowrap; font-size: clamp(.85rem, 3.9vw, 1rem); }
@@ -153,7 +156,13 @@ ol.rules b { color: var(--ink); }
 .seg button span { font-weight: 400; font-size: .82rem; color: var(--muted); }
 .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
 .seg button[aria-pressed="true"] span { color: var(--accent-ink); opacity: .85; }
-.confirm { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.modal-backdrop { position: fixed; inset: 0; z-index: 10; background: var(--scrim); display: flex; justify-content: center; align-items: flex-start; padding-inline: 16px; padding-block: calc(env(safe-area-inset-top, 0px) + 72px) 16px; }
+.confirm { width: 100%; max-width: 420px; background: var(--danger-bg); border: 2px solid var(--danger); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 12px 32px rgba(0, 0, 0, .25); }
+.confirm .eyebrow { color: var(--danger); }
+.confirm p { margin: 0; color: var(--ink); }
+.confirm .row { justify-content: flex-end; }
+.confirm button.ghost { color: var(--ink); border-color: var(--line); }
+button.danger { background: var(--danger); border-color: var(--danger); color: var(--danger-ink); }
 </style>
 </head>
 <body>
@@ -163,11 +172,14 @@ ol.rules b { color: var(--ink); }
     <button class="link" id="reset">New game</button>
     <span class="eyebrow" id="deckInfo"></span>
   </header>
-  <div class="confirm" id="quitConfirm" role="alertdialog" aria-labelledby="quitMsg" hidden>
-    <span id="quitMsg">Quit this game? The scores will be lost.</span>
-    <div class="row">
-      <button class="ghost" id="quitNo">Keep playing</button>
-      <button id="quitYes">Quit game</button>
+  <div class="modal-backdrop" id="quitConfirm" hidden>
+    <div class="confirm" role="alertdialog" aria-modal="true" aria-labelledby="quitTitle" aria-describedby="quitMsg">
+      <div class="eyebrow" id="quitTitle">Quit game</div>
+      <p id="quitMsg">Quit this game and go back to setup? The scores will be lost.</p>
+      <div class="row">
+        <button class="ghost" id="quitNo">Keep playing</button>
+        <button class="danger" id="quitYes">Quit game</button>
+      </div>
     </div>
   </div>
   <main id="app" class="stack"></main>
@@ -194,7 +206,14 @@ const CARD_SETS = {
   ["Dull","Sharp"],["Dark","Bright"],["Chill","Intense"],["Simple","Complicated"],["Calm","Chaotic"],
   ["Cheap hobby","Expensive hobby"],["Quick to make","Takes all day to make"],["Cheap date","Fancy date"],
   ["Easy to carry","Impossible to carry"],["Lives on land","Lives in water"],["Shy","Bold"],
-  ["Peaceful","Violent"],["Lazy","Hardworking"],["Mean","Nice"],["Poorly made","Well made"]
+  ["Peaceful","Violent"],["Lazy","Hardworking"],["Mean","Nice"],["Poorly made","Well made"],
+  ["Sticky","Slippery"],["Crunchy","Mushy"],["Bitter","Sweet"],["Easy to clean","Hard to clean"],
+  ["Fits in a pocket","Needs a truck"],["Daytime activity","Nighttime activity"],["Summer","Winter"],
+  ["Easy to grow","Hard to grow"],["Feathery","Scaly"],["Kitchen item","Garage item"],
+  ["Farm animal","Wild animal"],["Cheap pet","Expensive pet"],["Mountain trip","Beach trip"],
+  ["Easy to learn","Hard to learn"],["Over in minutes","Takes hours"],
+  ["Rainy day activity","Sunny day activity"],["Bad swimmer","Great swimmer"],["Quiet animal","Loud animal"],
+  ["Dry place","Wet place"],["Floats","Sinks"],["Lightweight","Heavyweight"],["Washable","Dry clean only"]
   ],
   normal: [
   ["Underrated","Overrated"],["Bad movie","Good movie"],["Bad TV show","Good TV show"],
@@ -220,7 +239,20 @@ const CARD_SETS = {
   ["Bad Halloween costume","Great Halloween costume"],["Morning person thing","Night owl thing"],
   ["Wholesome","Unhinged"],["Uses your brain","Uses your body"],["Introvert","Extrovert"],
   ["Tastes like childhood","Tastes grown-up"],["Fun to say","Unpleasant to say"],["Red flag","Green flag"],
-  ["Smart","Dumb"],["Unreliable","Reliable"]
+  ["Smart","Dumb"],["Unreliable","Reliable"],
+  ["Underrated vegetable","Overrated vegetable"],["Bad hiding spot","Great hiding spot"],
+  ["Bad reality show idea","Great reality show idea"],["Worst thing to step on","Best thing to step on"],
+  ["Terrible pickup line","Smooth pickup line"],["Bad wedding song","Great wedding song"],
+  ["Underrated holiday","Overrated holiday"],["Bad first job","Great first job"],
+  ["Bad interview answer","Great interview answer"],
+  ["Dies first in a horror movie","Survives the horror movie"],["Bad road trip snack","Great road trip snack"],
+  ["Bad dinner party guest","Great dinner party guest"],["Embarrassing to own","Cool to own"],
+  ["Bad excuse","Good excuse"],["Weak password","Strong password"],
+  ["Worse than the original","Better than the original"],["Trustworthy celebrity","Untrustworthy celebrity"],
+  ["Useless in a crisis","Great in a crisis"],["Dated slang","Fresh slang"],
+  ["Snack you share","Snack you hide"],["Lame party trick","Amazing party trick"],
+  ["Parents would approve","Parents would disapprove"],["Soup","Not soup"],
+  ["Bad smell to wake up to","Great smell to wake up to"],["Boring superpower","Terrifying superpower"]
   ],
   hard: [
   ["Vice","Virtue"],["Unethical","Ethical"],["Lowbrow","Highbrow"],["Comedy","Tragedy"],
@@ -241,7 +273,15 @@ const CARD_SETS = {
   ["Overthought","Underthought"],["Trendy","Timeless"],["Cringe","Iconic"],["Effortless","Try-hard"],
   ["Exclusive","Accessible"],["Masterpiece","Mess"],["Ahead of its time","Behind the times"],
   ["Would brag about","Would never admit"],["Healthy obsession","Unhealthy obsession"],
-  ["Nobody needs it","Everybody needs it"]
+  ["Nobody needs it","Everybody needs it"],
+  ["Nostalgic","Forward-looking"],["Rule follower","Rule breaker"],["Necessary evil","Unnecessary evil"],
+  ["Fine in moderation","Bad in any amount"],["Says a lot about you","Says nothing about you"],
+  ["Childhood fear","Adult fear"],["Easy to fake","Impossible to fake"],["Quiet luxury","Loud luxury"],
+  ["Easy to undo","Can't be undone"],["Low status","High status"],["Lawful","Chaotic"],
+  ["Feels productive","Actually productive"],["Not worth arguing about","Worth dying on a hill for"],
+  ["Simple pleasure","Acquired taste"],["Inherently funny","Inherently sad"],["Socially acceptable","Taboo"],
+  ["Pure talent","Pure practice"],["Universally liked","Divisive"],["Not alive","Alive"],
+  ["Not a sandwich","Sandwich"],["Private","Public"],["Overly cautious","Recklessly bold"]
   ]
 };
 
@@ -448,13 +488,13 @@ function render() {
     app.innerHTML = `
       ${scoresHTML()}
       <section class="panel">
-        <div class="eyebrow">${coop ? team + " gives the clue" + (S.extraTurn ? " · bonus card" : "") : team + " · Cluegiver's turn" + (S.extraTurn ? " · bonus turn" : "")}</div>
-        <div class="card-row">
-          ${cardHTML()}
+        <div class="panel-head">
+          <div class="eyebrow">${coop ? team + " gives the clue" + (S.extraTurn ? " · bonus card" : "") : team + " · Cluegiver's turn" + (S.extraTurn ? " · bonus turn" : "")}</div>
           <button class="icon-btn" id="skip" aria-label="Draw a different card" title="Draw a different card">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>
           </button>
         </div>
+        ${cardHTML()}
         <div class="dialbox">${dialSVG({ screenOpen: S.peek, showNeedle: false })}</div>
         <p class="hint peek-hint" id="peekHint">${S.peek ? peeking : lookAway}</p>
         <div class="clue-actions">
@@ -657,6 +697,9 @@ $("#reset").onclick = () => {
   $("#quitNo").focus();
 };
 $("#quitNo").onclick = () => { $("#quitConfirm").hidden = true; };
+// Tapping outside the card or pressing Escape also keeps playing.
+$("#quitConfirm").onclick = e => { if (e.target === e.currentTarget) $("#quitConfirm").hidden = true; };
+document.addEventListener("keydown", e => { if (e.key === "Escape") $("#quitConfirm").hidden = true; });
 $("#quitYes").onclick = () => {
   const keep = { mode: S.mode, teams: S.teams, players: S.players, goal: S.goal, coopLen: S.coopLen, difficulty: S.difficulty, custom: S.custom };
   S = Object.assign(fresh(), keep);
