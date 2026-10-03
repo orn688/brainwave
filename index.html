@@ -121,21 +121,18 @@ svg.dial.draggable { cursor: grab; }
 .screen.open { transform: rotate(180deg); }
 @media (prefers-reduced-motion: reduce) { .screen, .needle { transition: none !important; } }
 .needle { transform-box: view-box; transform-origin: 260px 250px; }
-.clue { font-family: var(--font-display); font-weight: 800; font-size: 1.5rem; text-align: center; overflow-wrap: anywhere; }
-.clue small { display: block; font-family: var(--font-mono); font-weight: 500; font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
-.result { text-align: center; display: flex; flex-direction: column; gap: 6px; }
-.result .big { font-family: var(--font-display); font-weight: 800; font-size: 2.6rem; line-height: 1; }
-.result .big.zero { color: var(--muted); }
-.pill { display: inline-block; font-family: var(--font-mono); font-size: .75rem; padding: 3px 10px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); }
-.lr { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.lr button { padding: 16px; font-size: 1.05rem; }
-.lr .bl { background: var(--left); border-color: var(--left); color: #fff; }
-.lr .br { background: var(--right); border-color: var(--right); color: #fff; }
+button.bl { background: var(--left); border-color: var(--left); color: #fff; }
+button.br { background: var(--right); border-color: var(--right); color: #fff; }
+.score-box { min-height: 48px; border-radius: 999px; border: 2px solid var(--line); display: grid; place-items: center; font-family: var(--font-display); font-weight: 800; font-size: 1.6rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.score-box.zero { color: var(--muted); }
 input[type=range] { width: 100%; accent-color: var(--accent); }
 .winner { text-align: center; }
 .winner .big { font-family: var(--font-display); font-weight: 800; font-size: clamp(2rem, 9vw, 3rem); line-height: 1.05; text-wrap: balance; }
 details summary { cursor: pointer; font-weight: 700; }
-.peek-hint { text-align: center; min-height: 3em; margin: 0; display: grid; place-items: center; }
+/* Every round screen: head, card, dial, message, two buttons, footer. Fixed slot sizes keep the dial and panel still between phases. */
+.peek-hint { text-align: center; min-height: 4.5em; margin: 0; display: grid; place-content: center; line-height: 1.5; }
+.panel-foot { height: 44px; display: flex; align-items: center; justify-content: center; text-align: center; }
+.panel-foot input[type=range] { margin: 0; }
 .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 36px; margin-block: -6px; }
 .icon-btn { flex: none; width: 36px; height: 36px; padding: 0; display: grid; place-items: center; border-radius: 10px; background: var(--panel); color: var(--accent); border: 1px solid var(--line); }
 .icon-btn svg { width: 18px; height: 18px; }
@@ -143,10 +140,6 @@ details summary { cursor: pointer; font-weight: 700; }
 .clue-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .clue-actions button { min-height: 48px; padding-inline: 8px; line-height: 1.2; white-space: nowrap; font-size: clamp(.85rem, 3.9vw, 1rem); }
 .row.split { justify-content: space-between; align-items: flex-start; }
-.clue-entry { flex: 1 1 220px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-.clue-entry summary { list-style: none; font-weight: 400; font-size: .9rem; color: var(--muted); text-decoration: underline; padding-block: 12px; width: max-content; }
-.clue-entry summary::-webkit-details-marker { display: none; }
-.clue-entry[open] summary { padding-block: 0; }
 ol.rules { margin: 8px 0 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 6px; color: var(--muted); max-width: 65ch; }
 ol.rules b { color: var(--ink); }
 .seg.four { grid-template-columns: repeat(4, 1fr); }
@@ -308,7 +301,7 @@ const STORE_KEY = "wavelength-game-v1"; // original key, kept so saved games sur
 const fresh = () => ({
   phase: "setup", mode: "teams", teams: ["Team Sky", "Team Ember"], players: ["Player 1", "Player 2"],
   scores: [0, 0], goal: 10, coopLen: 7, cardsLeft: 7, total: 0, difficulty: "normal",
-  active: 0, deck: [], card: null, target: 90, guess: 90, clue: "", lr: null,
+  active: 0, deck: [], card: null, target: 90, guess: 90, lr: null,
   peek: false, last: null, extraTurn: false, custom: "", round: 0
 });
 let S = fresh();
@@ -382,6 +375,17 @@ function dialSVG({ screenOpen, showNeedle, draggable }) {
     <rect x="${CX - 70}" y="${CY}" width="140" height="26" rx="6" fill="var(--needle)"/>
     <circle cx="${CX}" cy="${CY}" r="26" fill="var(--band4)" stroke="var(--needle)" stroke-width="5"/>
   </svg>`;
+}
+function roundPanel({ head, headAction = "", dialId = "", dial, message, actions, footer = "" }) {
+  return `
+      <section class="panel">
+        <div class="panel-head"><div class="eyebrow">${head}</div>${headAction}</div>
+        ${cardHTML()}
+        <div class="dialbox"${dialId ? ` id="${dialId}"` : ""}>${dial}</div>
+        <div class="hint peek-hint" id="peekHint">${message}</div>
+        <div class="clue-actions">${actions}</div>
+        <div class="panel-foot">${footer}</div>
+      </section>`;
 }
 function cardHTML() {
   if (!S.card) return "";
@@ -484,75 +488,56 @@ function render() {
   }
 
   if (S.phase === "clue") {
-    const lookAway = coop ? `Pass the device to ${team}. ${opp}, look away.` : `Pass the device to ${team}'s Cluegiver. Everyone else, look away.`;
+    const lookAway = coop ? `Pass to ${team}. ${opp}, look away.` : `Pass to ${team}'s Cluegiver. Everyone else, look away.`;
     const peeking = "Cluegiver only. Remember the target, then hide it.";
-    app.innerHTML = `
-      ${scoresHTML()}
-      <section class="panel">
-        <div class="panel-head">
-          <div class="eyebrow">${coop ? team + " gives the clue" + (S.extraTurn ? " · bonus card" : "") : team + " · Cluegiver's turn" + (S.extraTurn ? " · bonus turn" : "")}</div>
-          <button class="icon-btn" id="skip" aria-label="Draw a different card" title="Draw a different card">
+    const setMessage = () => { $("#peekHint").textContent = S.peek ? peeking : lookAway; };
+    app.innerHTML = scoresHTML() + roundPanel({
+      head: coop ? team + " gives the clue" + (S.extraTurn ? " · bonus card" : "") : team + " · Cluegiver's turn" + (S.extraTurn ? " · bonus turn" : ""),
+      headAction: `<button class="icon-btn" id="skip" aria-label="Draw a different card" title="Draw a different card">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>
-          </button>
-        </div>
-        ${cardHTML()}
-        <div class="dialbox">${dialSVG({ screenOpen: S.peek, showNeedle: false })}</div>
-        <p class="hint peek-hint" id="peekHint">${S.peek ? peeking : lookAway}</p>
-        <div class="clue-actions">
-          <button id="peek" class="ghost" aria-pressed="${S.peek}">${S.peek ? "Hide target" : "Peek at target"}</button>
-          <button id="toGuess">Start guessing</button>
-        </div>
-        <details class="clue-entry" id="clueEntry" ${S.clue ? "open" : ""}>
-          <summary>Playing remotely? Type the clue</summary>
-          <input type="text" id="clue" maxlength="60" value="${esc(S.clue)}" placeholder="Shown to everyone while guessing" aria-label="Clue">
-        </details>
-      </section>`;
+          </button>`,
+      dial: dialSVG({ screenOpen: S.peek, showNeedle: false }),
+      message: S.peek ? peeking : lookAway,
+      actions: `<button id="peek" class="ghost" aria-pressed="${S.peek}">${S.peek ? "Hide target" : "Peek at target"}</button>
+          <button id="toGuess">Start guessing</button>`
+    });
     // Peeking only swings the cover and swaps two labels; nothing else on screen changes.
     $("#peek").onclick = () => {
       S.peek = !S.peek; save();
       $(".dialbox .screen").classList.toggle("open", S.peek);
       $("#peek").textContent = S.peek ? "Hide target" : "Peek at target";
       $("#peek").setAttribute("aria-pressed", S.peek);
-      $("#peekHint").textContent = S.peek ? peeking : lookAway;
+      setMessage();
     };
     $("#skip").onclick = () => { drawCard(); newTarget(); render(); };
-    $("#clue").oninput = e => { S.clue = e.target.value; save(); };
-    $("#clueEntry").ontoggle = e => { if (e.target.open) $("#clue").focus(); };
     $("#toGuess").onclick = () => { S.peek = false; S.phase = "guess"; S.guess = 90; render(); };
     return;
   }
 
   if (S.phase === "guess") {
-    app.innerHTML = `
-      ${scoresHTML()}
-      <section class="panel">
-        <div class="eyebrow">${coop ? opp : team} · Guessing</div>
-        ${cardHTML()}
-        ${S.clue ? `<div class="clue"><small>Clue</small>${esc(S.clue)}</div>` : ""}
-        <div class="dialbox">${dialSVG({ screenOpen: false, showNeedle: true, draggable: true })}</div>
-        <input type="range" id="slider" min="0" max="180" step="0.5" value="${S.guess}" aria-label="Needle position">
-        <div class="row end"><button id="lock">Lock in guess</button></div>
-      </section>`;
+    app.innerHTML = scoresHTML() + roundPanel({
+      head: (coop ? opp : team) + " · Guessing",
+      dial: dialSVG({ screenOpen: false, showNeedle: true, draggable: true }),
+      message: "Drag the needle to where you think the target is.",
+      actions: `<button class="ghost" id="backToClue">Back to clue</button>
+          <button id="lock">Lock in guess</button>`,
+      footer: `<input type="range" id="slider" min="0" max="180" step="0.5" value="${S.guess}" aria-label="Needle position">`
+    });
     bindDial();
+    $("#backToClue").onclick = () => { S.phase = "clue"; render(); };
     $("#lock").onclick = () => { if (coop) revealCoop(); else { S.phase = "leftright"; render(); } };
     return;
   }
 
   if (S.phase === "leftright") {
-    app.innerHTML = `
-      ${scoresHTML()}
-      <section class="panel">
-        <div class="eyebrow">${opp} · Call the side</div>
-        ${cardHTML()}
-        ${S.clue ? `<div class="clue"><small>Clue</small>${esc(S.clue)}</div>` : ""}
-        <div class="dialbox">${dialSVG({ screenOpen: false, showNeedle: true })}</div>
-        <p class="hint" style="text-align:center">${opp}: is the target to the left or right of ${team}'s needle?</p>
-        <div class="lr">
-          <button class="bl" id="callL">◄ Left</button>
-          <button class="br" id="callR">Right ►</button>
-        </div>
-        <div class="row" style="justify-content:center"><button class="link" id="back">Back to the needle</button></div>
-      </section>`;
+    app.innerHTML = scoresHTML() + roundPanel({
+      head: opp + " · Call the side",
+      dial: dialSVG({ screenOpen: false, showNeedle: true }),
+      message: `${opp}: is the target left or right of the needle?`,
+      actions: `<button class="bl" id="callL">◄ Left</button>
+          <button class="br" id="callR">Right ►</button>`,
+      footer: `<button class="link" id="back">Back to the needle</button>`
+    });
     $("#callL").onclick = () => reveal("L");
     $("#callR").onclick = () => reveal("R");
     $("#back").onclick = () => { S.phase = "guess"; render(); };
@@ -562,22 +547,22 @@ function render() {
   if (S.phase === "reveal") {
     const L = S.last;
     const sideWord = L.side === "L" ? "left" : "right";
-    app.innerHTML = `
-      ${scoresHTML()}
-      <section class="panel">
-        <div class="eyebrow">Reveal</div>
-        ${cardHTML()}
-        ${S.clue ? `<div class="clue"><small>Clue</small>${esc(S.clue)}</div>` : ""}
-        <div class="dialbox" id="revealDial">${dialSVG({ screenOpen: false, showNeedle: true })}</div>
-        <div class="result">
-          <div class="big ${L.pts ? "" : "zero"}">${L.pts ? "+" + L.pts : "0"}</div>
-          ${coop ? `<div>${L.pts === 4 ? "Bullseye! You earn a bonus card." : L.pts ? "You score " + L.pts + "." : "Missed the bands this time."}</div>` : `
-          <div>${L.pts === 4 ? "Bullseye for " + team + "!" : L.pts ? team + " scores " + L.pts + "." : team + " missed the bands."}</div>
-          <div><span class="pill">${opp} called ${sideWord} · ${L.oppPt ? "+1 for " + opp : L.pts === 4 ? "no steal on a bullseye" : "wrong side"}</span></div>
-          ${L.extra ? `<div class="hint">${team} hit the bullseye while behind and goes again.</div>` : ""}`}
-        </div>
-        <div class="row end"><button id="next">${coop && S.cardsLeft <= 0 ? "See your result" : "Next round"}</button></div>
-      </section>`;
+    const scoreText = coop
+      ? (L.pts === 4 ? "Bullseye!" : L.pts ? `You score ${L.pts}.` : "Missed the bands this time.")
+      : (L.pts === 4 ? "Bullseye!" : L.pts ? `${team} scores ${L.pts}.` : "Missed the bands.");
+    const stealText = coop ? "" : ` ${opp} called ${sideWord}: ${L.oppPt ? "+1" : L.pts === 4 ? "no steal" : "wrong side"}.`;
+    const footer = coop
+      ? (L.pts === 4 ? "You earn a bonus card." : "")
+      : (L.extra ? `${team} hit the bullseye while behind and goes again.` : "");
+    app.innerHTML = scoresHTML() + roundPanel({
+      head: "Reveal",
+      dialId: "revealDial",
+      dial: dialSVG({ screenOpen: false, showNeedle: true }),
+      message: scoreText + stealText,
+      actions: `<div class="score-box ${L.pts ? "" : "zero"}" aria-label="${L.pts} points">${L.pts ? "+" + L.pts : "0"}</div>
+          <button id="next">${coop && S.cardsLeft <= 0 ? "See your result" : "Next round"}</button>`,
+      footer: footer ? `<span class="hint">${footer}</span>` : ""
+    });
     // Animate the screen opening after first paint.
     requestAnimationFrame(() => requestAnimationFrame(() => { const s = $("#revealDial .screen"); if (s) s.classList.add("open"); }));
     $("#next").onclick = () => {
@@ -644,7 +629,7 @@ function revealCoop() {
 }
 
 function startRound(extra = false) {
-  S.round++; S.clue = ""; S.peek = false; S.lr = null; S.extraTurn = extra;
+  S.round++; S.peek = false; S.lr = null; S.extraTurn = extra;
   drawCard(); newTarget(); S.guess = 90; S.phase = "clue"; render();
 }
 
