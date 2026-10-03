@@ -130,8 +130,14 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
 .winner { text-align: center; }
 .winner .big { font-family: var(--font-display); font-weight: 800; font-size: clamp(2rem, 9vw, 3rem); line-height: 1.05; text-wrap: balance; }
 details summary { cursor: pointer; font-weight: 700; }
-.peek-hint { text-align: center; min-height: 3em; margin: 0; }
-.peek-btn { min-width: 11em; }
+.peek-hint { text-align: center; min-height: 3em; margin: 0; display: grid; place-items: center; }
+.card-row { display: flex; gap: 8px; align-items: stretch; }
+.card-row .card { flex: 1; min-width: 0; }
+.icon-btn { flex: none; width: 48px; padding: 0; display: grid; place-items: center; border-radius: 12px; background: var(--panel); color: var(--accent); border: 1px solid var(--line); }
+.icon-btn svg { width: 22px; height: 22px; }
+.icon-btn:hover { border-color: var(--accent); }
+.clue-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.clue-actions button { min-height: 48px; padding-inline: 8px; line-height: 1.2; white-space: nowrap; font-size: clamp(.85rem, 3.9vw, 1rem); }
 .row.split { justify-content: space-between; align-items: flex-start; }
 .clue-entry { flex: 1 1 220px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .clue-entry summary { list-style: none; font-weight: 400; font-size: .9rem; color: var(--muted); text-decoration: underline; padding-block: 12px; width: max-content; }
@@ -443,20 +449,22 @@ function render() {
       ${scoresHTML()}
       <section class="panel">
         <div class="eyebrow">${coop ? team + " gives the clue" + (S.extraTurn ? " · bonus card" : "") : team + " · Cluegiver's turn" + (S.extraTurn ? " · bonus turn" : "")}</div>
-        ${cardHTML()}
+        <div class="card-row">
+          ${cardHTML()}
+          <button class="icon-btn" id="skip" aria-label="Draw a different card" title="Draw a different card">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>
+          </button>
+        </div>
         <div class="dialbox">${dialSVG({ screenOpen: S.peek, showNeedle: false })}</div>
         <p class="hint peek-hint" id="peekHint">${S.peek ? peeking : lookAway}</p>
-        <div class="row" style="justify-content:center">
-          <button id="peek" class="peek-btn" aria-pressed="${S.peek}">${S.peek ? "Hide target" : "Peek at target"}</button>
-          <button class="ghost" id="skip">Draw a different card</button>
+        <div class="clue-actions">
+          <button id="peek" class="ghost" aria-pressed="${S.peek}">${S.peek ? "Hide target" : "Peek at target"}</button>
+          <button id="toGuess">Start guessing</button>
         </div>
-        <div class="row split">
-          <details class="clue-entry" id="clueEntry" ${S.clue ? "open" : ""}>
-            <summary>Playing remotely? Type the clue</summary>
-            <input type="text" id="clue" maxlength="60" value="${esc(S.clue)}" placeholder="Shown to everyone while guessing" aria-label="Clue">
-          </details>
-          <button id="toGuess">Clue given, start guessing</button>
-        </div>
+        <details class="clue-entry" id="clueEntry" ${S.clue ? "open" : ""}>
+          <summary>Playing remotely? Type the clue</summary>
+          <input type="text" id="clue" maxlength="60" value="${esc(S.clue)}" placeholder="Shown to everyone while guessing" aria-label="Clue">
+        </details>
       </section>`;
     // Peeking only swings the cover and swaps two labels; nothing else on screen changes.
     $("#peek").onclick = () => {
