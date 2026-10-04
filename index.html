@@ -118,8 +118,8 @@ textarea { min-height: 96px; resize: vertical; font-family: var(--font-mono); fo
 svg.dial { outline: none; -webkit-tap-highlight-color: transparent; width: 100%; max-width: 100%; height: auto; display: block; touch-action: none; user-select: none; -webkit-user-select: none; }
 svg.dial.draggable { cursor: grab; }
 /* Once fully open the cover is hidden, so its outline can't peek above the dial's base line. */
-.screen { transform-box: view-box; transform-origin: 260px 250px; transition: transform .9s cubic-bezier(.6,.05,.25,1), visibility 0s; }
-.screen.open { transform: rotate(180deg); visibility: hidden; transition: transform .9s cubic-bezier(.6,.05,.25,1), visibility 0s .9s; }
+.screen { transform-box: view-box; transform-origin: 260px 250px; transition: transform .9s cubic-bezier(.6,.05,.25,1), opacity .15s, visibility 0s; }
+.screen.open { transform: rotate(180deg); opacity: 0; visibility: hidden; transition: transform .9s cubic-bezier(.6,.05,.25,1), opacity .15s .75s, visibility 0s .9s; }
 @media (prefers-reduced-motion: reduce) { .screen, .needle { transition: none !important; } }
 .needle { transform-box: view-box; transform-origin: 260px 250px; }
 button.bl { background: var(--left); border-color: var(--left); color: #fff; }
@@ -372,6 +372,7 @@ const $ = (sel, root = document) => root.querySelector(sel);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const CX = 260, CY = 250, R = 230;
 function pt(deg, r) { const a = deg * Math.PI / 180; return [CX - r * Math.cos(a), CY - r * Math.sin(a)]; }
+const arc = r => `M${CX - r},${CY} A${r},${r} 0 0 1 ${CX + r},${CY}`;
 function wedge(a0, a1, r) {
   a0 = Math.max(0, a0); a1 = Math.min(180, a1);
   if (a1 <= a0) return "";
@@ -406,8 +407,10 @@ function dialSVG({ screenOpen, showNeedle, draggable }) {
     <g clip-path="url(#top)">${labels}</g>
     <g clip-path="url(#top)">
       <g class="screen ${screenOpen ? "open" : ""}">
-        <path d="${wedge(0, 180, R + 1)}" fill="var(--screen)" stroke="var(--screen-edge)" stroke-width="3"/>
-        <path d="${wedge(0, 180, R * 0.62)}" fill="none" stroke="var(--screen-edge)" stroke-width="2" stroke-dasharray="2 8" stroke-linecap="round"/>
+        <path d="${wedge(0, 180, R + 1)}" fill="var(--screen)"/>
+        <!-- Outline only the curved edges: a stroke on the flat bottom edge would sit on the base line once the cover swings down. -->
+        <path d="${arc(R + 1)}" fill="none" stroke="var(--screen-edge)" stroke-width="3"/>
+        <path d="${arc(R * 0.62)}" fill="none" stroke="var(--screen-edge)" stroke-width="2" stroke-dasharray="2 8" stroke-linecap="round"/>
       </g>
     </g>
     ${showNeedle ? `
