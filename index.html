@@ -117,8 +117,9 @@ textarea { min-height: 96px; resize: vertical; font-family: var(--font-mono); fo
 /* No browser focus box or tap flash when dragging; a ring shows only after arrow-key use (.kbd). */
 svg.dial { outline: none; -webkit-tap-highlight-color: transparent; width: 100%; max-width: 100%; height: auto; display: block; touch-action: none; user-select: none; -webkit-user-select: none; }
 svg.dial.draggable { cursor: grab; }
-.screen { transform-box: view-box; transform-origin: 260px 250px; transition: transform .9s cubic-bezier(.6,.05,.25,1); }
-.screen.open { transform: rotate(180deg); }
+/* Once fully open the cover is hidden, so its outline can't peek above the dial's base line. */
+.screen { transform-box: view-box; transform-origin: 260px 250px; transition: transform .9s cubic-bezier(.6,.05,.25,1), visibility 0s; }
+.screen.open { transform: rotate(180deg); visibility: hidden; transition: transform .9s cubic-bezier(.6,.05,.25,1), visibility 0s .9s; }
 @media (prefers-reduced-motion: reduce) { .screen, .needle { transition: none !important; } }
 .needle { transform-box: view-box; transform-origin: 260px 250px; }
 button.bl { background: var(--left); border-color: var(--left); color: #fff; }
