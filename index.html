@@ -390,10 +390,9 @@ function dialSVG({ screenOpen, showNeedle, draggable }) {
     ticks.push(`<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="var(--muted)" stroke-width="${d % 30 ? 1.5 : 2.5}" stroke-linecap="round"/>`);
   }
   const labels = bands.map(([a0, a1, , n]) => {
-    // Label the visible part of each band; skip slivers too thin to hold a number.
-    const v0 = Math.max(0, a0), v1 = Math.min(180, a1);
-    if (v1 - v0 < 2) return "";
-    const [x, y] = pt((v0 + v1) / 2, R - 22);
+    // Each number stays at its band's true centre and is clipped at the dial's edge with the band.
+    if (a1 <= 0 || a0 >= 180) return "";
+    const [x, y] = pt((a0 + a1) / 2, R - 22);
     return `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="middle" font-family="var(--font-mono)" font-size="15" fill="#fff" font-weight="500">${n}</text>`;
   }).join("");
   const [nx, ny] = pt(S.guess, R - 6);
@@ -403,7 +402,7 @@ function dialSVG({ screenOpen, showNeedle, draggable }) {
     ${ticks.join("")}
     <path d="${wedge(0, 180, R)}" fill="var(--dial)" stroke="var(--line)" stroke-width="2"/>
     ${bands.map(([a0, a1, c]) => `<path d="${wedge(a0, a1, R)}" fill="var(${c})"/>`).join("")}
-    ${labels}
+    <g clip-path="url(#top)">${labels}</g>
     <g clip-path="url(#top)">
       <g class="screen ${screenOpen ? "open" : ""}">
         <path d="${wedge(0, 180, R + 1)}" fill="var(--screen)" stroke="var(--screen-edge)" stroke-width="3"/>
